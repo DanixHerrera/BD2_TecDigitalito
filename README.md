@@ -22,8 +22,7 @@ https://github.com/users/DanixHerrera/projects/11
 
 # Documentación
 
-<img width="896" height="400" alt="image" src="https://github.com/user-attachments/assets/b8d6e821-d340-4061-bd6a-c641877860a6" />
-
+<img width="896" height="754" alt="image" src="https://github.com/user-attachments/assets/eaacfb06-acb8-4e5e-9e7f-96d0c9ac082f" />
 
 https://docs.google.com/document/d/18XN7firw_Y7sPWDyTFmF_-cMS9XrU0OwcUGoF-kn_Bw/edit?usp=sharing
 
