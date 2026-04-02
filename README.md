@@ -3,6 +3,8 @@
 
 # BD2_TecDigitalito
 
+Fecha de Entrega : 16/04/2026 23:45
+
 ## Integrantes Grupo 6
 
 Sofia Elena Barrantes Miranda
