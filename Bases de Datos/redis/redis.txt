@@ -1,0 +1,51 @@
+BUCKET: "Login"
+Key: id_login
+Value:
+{
+    user_id
+    username
+    login_timestamp
+    bool_recordarme
+}
+
+BUCKET: "Login_attempts"
+Key: username
+Value:
+{
+    int
+}
+
+BUCKET: "blocked_user"
+Key: user_id
+Value:
+{
+    bool_blocked
+    unblock_time
+}
+
+BUCKET: "suspicious_activity"
+Key: user_id
+Value:
+{
+    timestamp
+    reason
+}
+
+BUCKET: "reset_password"
+Key: 
+Value:
+{
+    user_id
+    expiration
+    bool_used
+}
+
+BUCKET: "Remeber_login"
+Key: 
+Value:
+{
+    user_id
+    star
+    ends
+}
+
