@@ -1,0 +1,86 @@
+{
+    "//": "segun lo que vi tomando a figma make y las HU como referencia:",
+    "//": "view = vista materializada, es decir, una consulta predefinida que se actualiza cada vez que se modifica la info",
+    "//": "los _id deben ser con UUID (no con MongoDB ObjetId) ya que se va a conectar 5 BD diferentes y se necesita un identificador único global",
+    "//": "ejemplo de lo anterior: _id: uuid-123",
+    "user" : {
+        "username" : "",
+        "password_hash" : "",
+        "salt" : "",
+        "first_name" : "",
+        "second_name" : "",
+        "first_surname" : "",
+        "second_surname" : "",
+        "birth_date" : "",
+        "avatar_url" : "",
+        "email" : "",
+        
+
+        "enrollments" : [{
+            "course_id" : "",
+            "course_code" : "",
+            "course_name" : "",
+            "professor_first_name" : "",
+            "professor_first_surname" : "",
+            "enrollment_date" : "",
+            "role" : ""
+        }]
+    },
+
+    "course" : {
+        "course_id" : "",
+        "course_code" : "",
+        "course_name" : "",
+        "course_group" : "",
+        "description" : "",
+        "course_image_url" : "",
+        "status" : "",
+        "start_date" : "",
+        "end_date" : "",
+
+        
+        "view_professor_team" : [{
+                "professor_user_id" : "",
+                "professor_first_name" : "",
+                "professor_second_name" : "",
+                "professor_first_surname" : "",
+                "professor_second_surname" : ""
+         }] ,
+        
+        "course_topics_sections" : [{
+                "section_id" : "",
+                "section_title" : "",
+                "section_items" : [{
+                        "item_id" : "",
+                        "item_name" : "",
+                        "item_content_type" : "",
+                        "item_content_url" : ""
+                }]
+        
+      }],
+
+      "view_assessments" : [{
+                "assessment_id" : "",
+                "assessment_name" : "",
+                "assessment_description" : "",
+                "assessment_due_date" : "",
+                "assessment_total_points" : ""
+      }],
+
+
+      "//": "lo siguiente es innecesario pero lo dejo para tenerlo como referencia",
+      "//": "Problema: cada vez que un estudiante se matricula, hay que actualizar el documento course para agregar al estudiante al array, solución: consulta inversa con un db.users.find()", 
+      "view_students" : [{
+                "student_user_id" : "",
+                "student_first_name" : "",
+                "student_second_name" : "",
+                "student_first_surname" : "",
+                "student_second_surname" : "",
+                "role" : ""
+      }]
+
+    }
+
+}
+    
+    
