@@ -20,3 +20,4 @@ app.get('/api/health', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
+// Codigo place-holder de Gemini ( No es codigo de produccion ) 
