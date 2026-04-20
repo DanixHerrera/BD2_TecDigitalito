@@ -1,0 +1,11 @@
+.clock-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.clock-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}

@@ -1,5 +1,6 @@
 import { Clock as ClockIcon } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import '@/styles/Clock.css'
 
 export default function Clock() {
     const [time, setTime] = useState(new Date());
@@ -10,9 +11,9 @@ export default function Clock() {
     }, [])
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="clock-container">
             <ClockIcon size={18} />
-            <span className="text-sm font-medium">{time.toLocaleTimeString()}</span>
+            <span className="clock-text">{time.toLocaleTimeString()}</span>
         </div>
     )
 }

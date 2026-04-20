@@ -1,19 +1,21 @@
 import { Link } from 'react-router'
 import { Menu, Bell, User } from 'lucide-react'
 import Clock from './Clock'
+import '@/styles/Navbar.css'
+
 export default function Navbar({ onMenuClick }) {
   return (
-    <nav className="fixed top-0 left-0 right-0 h-16 bg-white border-b z-50 px-4 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <button onClick={onMenuClick} className="lg:hidden p-2">
+    <nav className="navbar">
+      <div className="navbar-section">
+        <button onClick={onMenuClick} className="navbar-btn-mobile">
           <Menu size={20} />
         </button>
-        <Link to="/this-route-does-not-exist" className="font-bold text-xl text-primary">tecDigitalito</Link>
+        <Link to="/this-route-does-not-exist" className="navbar-brand">tecDigitalito</Link>
       </div>
-      <div className="flex items-center gap-4 text-muted-foreground">
+      <div className="navbar-actions">
         <Clock />
-        <Bell size={20} />
-        <User size={20} />
+        <Bell size={20} className="cursor-pointer hover:text-primary transition-colors" />
+        <User size={20} className="cursor-pointer hover:text-primary transition-colors" />
       </div>
     </nav>
   )

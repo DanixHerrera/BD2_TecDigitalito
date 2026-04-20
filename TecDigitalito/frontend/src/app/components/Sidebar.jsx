@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router'
 import { Home, Book, Users } from 'lucide-react'
 import { cn } from './ui/utils'
+import '@/styles/Sidebar.css'
 
 export default function Sidebar({ isOpen, onClose }) {
   const links = [
@@ -11,16 +12,20 @@ export default function Sidebar({ isOpen, onClose }) {
 
   return (
     <>
-      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onClose} />}
+      {isOpen && <div className="sidebar-overlay" onClick={onClose} />}
       <aside className={cn(
-        "fixed top-16 bottom-0 left-0 w-64 bg-white border-r z-40 transition-transform lg:translate-x-0",
-        isOpen ? "translate-x-0" : "-translate-x-full"
+        "sidebar",
+        isOpen ? "sidebar-open" : "sidebar-closed"
       )}>
-        <nav className="p-4 flex flex-col gap-2">
+        <nav className="sidebar-nav">
           {links.map(link => (
-            <NavLink key={link.path} to={link.path} className="flex gap-3 p-2 rounded hover:bg-slate-100 items-center">
-              <link.icon size={18} /> 
-              <span className="text-sm font-medium">{link.name}</span>
+            <NavLink 
+              key={link.path} 
+              to={link.path} 
+              className={({ isActive }) => cn("sidebar-link", isActive && "active")}
+            >
+              <link.icon size={18} className="sidebar-link-icon" /> 
+              <span className="sidebar-link-text">{link.name}</span>
             </NavLink>
           ))}
         </nav>
