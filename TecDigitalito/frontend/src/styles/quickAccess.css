@@ -1,0 +1,70 @@
+/* 
+ * ACLARACIÓN DE USO DE IA:
+ * Se hizo uso de asistencia de IA para poder transformar la interfaz de usuario (UI) del prototipo 
+ * y trasladar sus estilos al proyecto, reduciendo la fricción al usar CSS y logrando que cada 
+ * aspecto coincida perfectamente con el diseño original.
+ */
+
+@import "tailwindcss";
+
+.qa-card {
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.qa-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .qa-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.qa-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  border-radius: var(--radius-xl);
+  transition: all 200ms ease-in-out;
+  border: 1px solid transparent;
+  background-color: color-mix(in srgb, var(--accent), transparent 70%);
+}
+
+.qa-item:hover {
+  background-color: color-mix(in srgb, var(--accent), transparent 40%);
+  border-color: color-mix(in srgb, var(--primary), transparent 90%);
+}
+
+.qa-item:active {
+  transform: scale(0.98);
+}
+
+.qa-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: 0.75rem;
+  transition: transform 200ms ease-in-out;
+  color: var(--primary);
+}
+
+.qa-item:hover .qa-icon {
+  transform: scale(1.1);
+}
+
+.qa-label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-align: center;
+  transition: color 200ms ease-in-out;
+  color: color-mix(in srgb, var(--foreground), transparent 20%);
+}
+
+.qa-item:hover .qa-label {
+  color: var(--primary);
+}
