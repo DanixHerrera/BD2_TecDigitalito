@@ -4,7 +4,7 @@ import { cn } from './ui/utils'
 
 export default function Sidebar({ isOpen, onClose }) {
   const links = [
-    { name: 'Inicio', path: '/this-route-does-not-exist', icon: Home },
+    { name: 'Inicio', path: '/', icon: Home },
     { name: 'Cursos', path: '/my-enrollments', icon: Book },
     { name: 'Social', path: '/social/friends', icon: Users },
   ]
