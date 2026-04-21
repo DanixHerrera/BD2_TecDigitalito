@@ -1,9 +1,7 @@
-Diagrama de documentos para Mensaje directo (boceto):
-
-Mensaje {
-	emisor_id
-	receptor_id
-	tiempo
-	contenido
-	visto
+"mensaje" : {
+	"emisor_id" : "",
+	"receptor_id" : "",
+	"tiempo" : "",
+	"contenido" : "",
+	"visto" : "",
 }
