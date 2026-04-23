@@ -11,6 +11,7 @@ import {
   validateAvatar,
   validateForm,
 } from '../../../lib/validations';
+import { getDominantColor } from '../../../lib/colors';
 import '../../../styles/Register.css';
 
 export default function Register() {
@@ -18,6 +19,7 @@ export default function Register() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [visualColor, setVisualColor] = useState('#7d7e80'); // Color por defecto
   const [errors, setErrors] = useState({});
 
   const [formData, setFormData] = useState({
@@ -45,12 +47,18 @@ export default function Register() {
     if (errors[id]) setErrors(prev => ({ ...prev, [id]: null }));
   };
 
-  const handleAvatarChange = (e) => {
+  const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    const imageUrl = URL.createObjectURL(file);
     setFormData(prev => ({ ...prev, avatar: file }));
-    setAvatarPreview(URL.createObjectURL(file));
+    setAvatarPreview(imageUrl);
     if (errors.avatar) setErrors(prev => ({ ...prev, avatar: null }));
+
+    // Extraer y aplicar color dominante
+    const color = await getDominantColor(imageUrl);
+    setVisualColor(color);
   };
 
   const handleSubmit = (e) => {
@@ -91,7 +99,13 @@ export default function Register() {
       <div className="register-card">
 
         {/* Columna Izquierda */}
-        <div className="register-visual">
+        <div 
+          className="register-visual" 
+          style={{ 
+            backgroundColor: visualColor, 
+            transition: 'background-color 0.5s ease-in-out' 
+          }}
+        >
           <div className="avatar-preview-container">
             {avatarPreview
               ? <img src={avatarPreview} alt="Vista previa" />
