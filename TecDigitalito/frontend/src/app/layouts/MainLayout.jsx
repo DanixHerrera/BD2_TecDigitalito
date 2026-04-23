@@ -3,6 +3,7 @@ import { Outlet, Navigate } from 'react-router'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import { useAuth } from '../hooks/useAuth'
+import '../../styles/MainLayout.css'
 
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -12,11 +13,11 @@ export default function MainLayout() {
   if (!user) return <Navigate to="/login" replace />
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="main-layout">
       <Navbar onMenuClick={() => setSidebarOpen(prev => !prev)} />
-      <div className="flex pt-16">
+      <div className="main-content-container">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="flex-1 p-6 lg:ml-64">
+        <main className="main-content-area">
           <Outlet />
         </main>
       </div>
