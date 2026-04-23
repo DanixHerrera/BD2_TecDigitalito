@@ -10,10 +10,14 @@ const { connectRaven } = require('./src/databases/raven');
 const authRoutes = require('./src/routes/auth');
 const authMiddleware = require('./src/middlewares/authMiddleware');
 const courseRoutes = require('./src/routes/course');
+const sectionRoutes = require('./src/routes/section');
+const sectionContentRoutes = require('./src/routes/sectionContent');
 
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+app.use('/api', sectionRoutes);
+app.use('/api', sectionContentRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ ok: true });
