@@ -15,6 +15,7 @@ const sectionContentRoutes = require('./src/routes/sectionContent');
 const messageRoutes = require('./src/routes/message');
 const socialRoutes = require('./src/routes/social');
 const evaluationRoutes = require('./src/routes/evaluation');
+const userRoutes = require('./src/routes/user');
 
 const app = express();
 app.use(express.json());
@@ -24,6 +25,7 @@ app.use('/api', sectionContentRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api', evaluationRoutes);
+app.use('/api/users', userRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ ok: true });
