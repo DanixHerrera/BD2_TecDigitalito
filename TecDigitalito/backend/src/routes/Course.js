@@ -1,17 +1,17 @@
-// const express = require('express');
-// const Course = require('../models/Course');
+const express = require('express');
+const authMiddleware = require('../middlewares/authMiddleware');
+const {
+  createCourse,
+  getMyCreatedCourses,
+  getCatalog,
+  publishCourse,
+} = require('../controllers/courseController');
 
-// const router = express.Router();
+const router = express.Router();
 
-// CREATE - Crear curso
+router.get('/catalog', getCatalog);
+router.get('/my-created', authMiddleware, getMyCreatedCourses);
+router.post('/', authMiddleware, createCourse);
+router.patch('/:id/publish', authMiddleware, publishCourse);
 
-// READ - Obtener todos los cursos
-
-// READ - Obtener un curso por ID
-
-// UPDATE - Actualizar curso
-
-// DELETE - Eliminar curso
-
-// module.exports = router;
-
+module.exports = router;
