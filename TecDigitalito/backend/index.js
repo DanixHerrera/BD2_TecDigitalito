@@ -9,6 +9,7 @@ const { connectRaven } = require('./src/databases/raven');
 
 const authRoutes = require('./src/routes/auth');
 const authMiddleware = require('./src/middlewares/authMiddleware');
+const courseRoutes = require('./src/routes/course');
 
 const app = express();
 app.use(express.json());
@@ -43,6 +44,7 @@ app.get('/health/redis-get', async (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/courses', courseRoutes);
 
 async function iniciar() {
   console.log('Iniciando Mongo...');
