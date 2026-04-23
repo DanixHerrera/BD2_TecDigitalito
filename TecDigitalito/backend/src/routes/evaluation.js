@@ -5,6 +5,7 @@ const {
   getEvaluationsByCourse,
   submitEvaluation,
   getMyResultsByCourse,
+  getEvaluationResults,
 } = require('../controllers/evaluationController');
 
 const router = express.Router();
@@ -12,6 +13,7 @@ const router = express.Router();
 router.post('/courses/:id/evaluations', authMiddleware, createEvaluation);
 router.get('/courses/:id/evaluations', authMiddleware, getEvaluationsByCourse);
 router.get('/courses/:id/my-results', authMiddleware, getMyResultsByCourse);
+router.get('/evaluations/:id/results', authMiddleware, getEvaluationResults);
 
 router.post('/evaluations/:id/submit', authMiddleware, submitEvaluation);
 

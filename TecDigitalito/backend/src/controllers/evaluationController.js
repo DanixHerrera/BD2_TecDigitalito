@@ -95,6 +95,17 @@ async function submitEvaluation(req, res) {
         message: 'Evaluación no encontrada',
       });
     }
+    const existingResult = await EvaluationResult.findOne({
+  evaluationId,
+  studentId,
+});
+
+if (existingResult) {
+  return res.status(400).json({
+    ok: false,
+    message: 'Ya respondiste esta evaluación',
+  });
+}
 
     const now = new Date();
     if (now < new Date(evaluation.startDate) || now > new Date(evaluation.endDate)) {
@@ -187,10 +198,61 @@ async function getMyResultsByCourse(req, res) {
     });
   }
 }
+async function getEvaluationResults(req, res) {
+  try {
+    const { id: evaluationId } = req.params;
+    const teacherId = req.user.userId;
 
+    const evaluation = await Evaluation.findById(evaluationId);
+
+    if (!evaluation) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Evaluación no encontrada',
+      });
+    }
+
+    const course = await Course.findById(evaluation.courseId);
+
+    if (!course) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Curso no encontrado',
+      });
+    }
+
+    if (course.teacherId.toString() !== teacherId) {
+      return res.status(403).json({
+        ok: false,
+        message: 'No tienes permiso para ver estos resultados',
+      });
+    }
+
+    const results = await EvaluationResult.find({ evaluationId })
+      .populate('studentId', 'username fullName email')
+      .sort({ submittedAt: -1 });
+
+    return res.status(200).json({
+      ok: true,
+      evaluation: {
+        _id: evaluation._id,
+        title: evaluation.title,
+        courseId: evaluation.courseId,
+      },
+      results,
+    });
+  } catch (error) {
+    console.error('Error en getEvaluationResults:', error);
+    return res.status(500).json({
+      ok: false,
+      message: 'Error interno del servidor',
+    });
+  }
+}
 module.exports = {
   createEvaluation,
   getEvaluationsByCourse,
   submitEvaluation,
   getMyResultsByCourse,
+  getEvaluationResults,
 };

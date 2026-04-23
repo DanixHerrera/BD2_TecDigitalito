@@ -1,18 +1,9 @@
-// const express = require('express');
-// const User = require('../models/Usuario');
+const express = require('express');
+const authMiddleware = require('../middlewares/authMiddleware');
+const { searchUsers } = require('../controllers/userController');
 
-// const router = express.Router();
+const router = express.Router();
 
-// CREATE - Crear user
+router.get('/search', authMiddleware, searchUsers);
 
-// READ - Obtener todos
-
-// READ - Obtener por username
-
-// READ - Obtener uno por ID
-
-// UPDATE - Actualizar
-
-// DELETE - Eliminar
-
-// module.exports = router;
+module.exports = router;
