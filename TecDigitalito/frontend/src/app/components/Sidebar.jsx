@@ -6,7 +6,7 @@ import '@/styles/Sidebar.css'
 export default function Sidebar({ isOpen, onClose }) {
   const links = [
     { name: 'Inicio', path: '/', icon: Home },
-    { name: 'Cursos', path: '/my-enrollments', icon: Book },
+    { name: 'Cursos', path: '/courses', icon: Book },
     { name: 'Social', path: '/social/friends', icon: Users },
   ]
 

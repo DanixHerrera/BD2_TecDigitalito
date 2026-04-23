@@ -8,7 +8,7 @@ tec-digitalito-proyecto(1).md
 >>>>>>> 4223c707a8dfefc69413aaea51cd4862c7413478
 .env
 TecDigitalito/backend/.env
-
+backend_integration_strategy.md 
 DataBases/mongo/data/
 DataBases/redis/data/
 
