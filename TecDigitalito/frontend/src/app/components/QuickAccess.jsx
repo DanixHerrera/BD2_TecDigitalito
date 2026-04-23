@@ -5,14 +5,9 @@ import "@/styles/quickAccess.css";
 
 const quickAccessElements = [
     {
-        title: "Catálogo",
-        icon: Book,
-        href: "/catalog"
-    },
-    {
         title: "Mis Cursos",
         icon: GraduationCap,
-        href: "/my-enrollments"
+        href: "/courses"
     },
     {
         title: "Mensajes",

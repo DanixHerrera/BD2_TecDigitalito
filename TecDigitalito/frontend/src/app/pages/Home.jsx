@@ -1,5 +1,6 @@
 import { useAuth } from "../hooks/useAuth";
 import QuickAccess from "../components/QuickAccess";
+import Catalog from "./courses/Catalog";
 import { LogOut } from "lucide-react";
 import "../../styles/Home.css";
 
@@ -18,7 +19,12 @@ export default function Home() {
           Cerrar Sesión
         </button>
       </div>
+
       <QuickAccess />
+
+      <section className="home-catalog-section" style={{ marginTop: '3rem' }}>
+        <Catalog showTitle={true} />
+      </section>
     </div>
   );
 }
