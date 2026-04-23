@@ -20,9 +20,11 @@
 
 /* Columna Izquierda: Espacio para imagen */
 .login-visual {
-    flex: 1.2;
-    background: #000;
+    flex: 1.5;
+    background: #00040f url('../assets/login-bg.jpg') no-repeat center center;
+    background-size: contain; /* Muestra la imagen completa sin recortes */
     min-height: 100%;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Columna Derecha: Formulario */
