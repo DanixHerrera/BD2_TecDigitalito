@@ -12,12 +12,18 @@ const authMiddleware = require('./src/middlewares/authMiddleware');
 const courseRoutes = require('./src/routes/course');
 const sectionRoutes = require('./src/routes/section');
 const sectionContentRoutes = require('./src/routes/sectionContent');
+const messageRoutes = require('./src/routes/message');
+const socialRoutes = require('./src/routes/social');
+const evaluationRoutes = require('./src/routes/evaluation');
 
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use('/api', sectionRoutes);
 app.use('/api', sectionContentRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/social', socialRoutes);
+app.use('/api', evaluationRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ ok: true });
