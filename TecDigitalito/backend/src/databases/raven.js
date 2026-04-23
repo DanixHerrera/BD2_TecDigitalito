@@ -1,17 +1,31 @@
-const { DocumentStore } = require("ravendb");
+const { DocumentStore } = require('ravendb');
 
-const store = new DocumentStore(
-  process.env.RAVEN_URL,
-  process.env.RAVEN_DATABASE
-);
+let store = null;
 
 function connectRaven() {
   try {
+    store = new DocumentStore(
+      process.env.RAVEN_URL,
+      process.env.RAVEN_DATABASE
+    );
+
     store.initialize();
-    console.log("RavenDB conectado");
+    console.log('RavenDB conectado');
+    return true;
   } catch (error) {
-    console.error("Error conectando RavenDB:", error.message);
+    console.error('Error conectando RavenDB:', error.message);
+    return false;
   }
 }
 
-module.exports = { store, connectRaven };
+function getStore() {
+  if (!store) {
+    throw new Error('RavenDB no ha sido inicializado');
+  }
+  return store;
+}
+
+module.exports = {
+  connectRaven,
+  getStore,
+};

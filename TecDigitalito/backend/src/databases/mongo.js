@@ -1,26 +1,26 @@
 const mongoose = require('mongoose');
 
 async function connectMongo() {
-    try {
-        await mongoose.connect(process.env.MONGO_URL);
-        console.log("MongoDB conectado");
-        return true;
-    } catch (error) {
-        console.log("Error:", error.message);
-        return false;
-    }
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log('MongoDB conectado');
+    return true;
+  } catch (error) {
+    console.error('Error conectando MongoDB:', error.message);
+    return false;
+  }
 }
 
 async function disconnectMongo() {
-    try {
-        await mongoose.disconnect();
-        console.log("MongoDB desconectado");
-    } catch (error) {
-        console.log("Error:", error.message);
-    }
+  try {
+    await mongoose.disconnect();
+    console.log('MongoDB desconectado');
+  } catch (error) {
+    console.error('Error desconectando MongoDB:', error.message);
+  }
 }
 
-module.exports = { connectMongo, disconnectMongo };
-
-
-/// Base para empezar con mongo 
+module.exports = {
+  connectMongo,
+  disconnectMongo,
+};

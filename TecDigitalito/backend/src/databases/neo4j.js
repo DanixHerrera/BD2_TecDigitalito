@@ -1,4 +1,4 @@
-const neo4j = require("neo4j-driver");
+const neo4j = require('neo4j-driver');
 
 const driver = neo4j.driver(
   process.env.NEO4J_URI,
@@ -8,10 +8,25 @@ const driver = neo4j.driver(
 async function connectNeo4j() {
   try {
     await driver.verifyConnectivity();
-    console.log("Neo4j conectado");
+    console.log('Neo4j conectado');
+    return true;
   } catch (error) {
-    console.error("Error conectando Neo4j:", error.message);
+    console.error('Error conectando Neo4j:', error.message);
+    return false;
   }
 }
 
-module.exports = { driver, connectNeo4j };
+async function closeNeo4j() {
+  try {
+    await driver.close();
+    console.log('Neo4j desconectado');
+  } catch (error) {
+    console.error('Error cerrando Neo4j:', error.message);
+  }
+}
+
+module.exports = {
+  driver,
+  connectNeo4j,
+  closeNeo4j,
+};

@@ -1,16 +1,18 @@
-# Node
+
 node_modules/
+<<<<<<< HEAD
 tec-digitalito-proyecto(1).md
 # Env
+=======
+
+>>>>>>> 4223c707a8dfefc69413aaea51cd4862c7413478
 .env
 TecDigitalito/backend/.env
 
-# Data de bases (MUY IMPORTANTE)
 DataBases/mongo/data/
 DataBases/redis/data/
 
-# Logs
+
 *.log
 
-# OS
 .DS_Store
