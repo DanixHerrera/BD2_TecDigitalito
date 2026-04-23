@@ -1,16 +1,13 @@
-# Node
+
 node_modules/
 
-# Env
 .env
 TecDigitalito/backend/.env
 
-# Data de bases (MUY IMPORTANTE)
 DataBases/mongo/data/
 DataBases/redis/data/
 
-# Logs
+
 *.log
 
-# OS
 .DS_Store
