@@ -1,10 +1,15 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router'
+import { Outlet, Navigate } from 'react-router'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
+import { useAuth } from '../hooks/useAuth'
 
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { user } = useAuth()
+
+  // Si no hay usuario, redirige al login
+  if (!user) return <Navigate to="/login" replace />
 
   return (
     <div className="min-h-screen bg-slate-50">
