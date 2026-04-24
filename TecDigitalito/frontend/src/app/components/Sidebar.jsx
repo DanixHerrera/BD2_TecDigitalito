@@ -8,6 +8,8 @@ export default function Sidebar({ isOpen, onClose }) {
     { name: 'Inicio', path: '/', icon: Home },
     { name: 'Cursos', path: '/courses', icon: Book },
     { name: 'Social', path: '/social/friends', icon: Users },
+    { name: 'Mensajes', path: '/social/user-messages', icon: Users },
+    { name: 'Directorio', path: '/social/students', icon: Users },
   ]
 
   return (

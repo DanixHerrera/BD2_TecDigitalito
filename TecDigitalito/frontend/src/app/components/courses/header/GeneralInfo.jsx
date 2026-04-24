@@ -1,4 +1,4 @@
-export default function GeneralInfo({ course }) {
+export default function GeneralInfo({ course, isStudent, onContactProfessor }) {
   return (
     <div className="general-info">
       <div className="info-card">
@@ -25,6 +25,13 @@ export default function GeneralInfo({ course }) {
                 <span className="info-meta-label">Correo</span>
                 <span className="info-meta-value">{course.professor.email}</span>
               </li>
+              {isStudent && (
+                <li className="info-meta-item" style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                  <button className="contact-professor-btn" onClick={onContactProfessor}>
+                    Consultar al docente
+                  </button>
+                </li>
+              )}
             </>
           )}
           {course.credits && (

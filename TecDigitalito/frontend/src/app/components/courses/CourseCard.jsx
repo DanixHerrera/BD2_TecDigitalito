@@ -3,7 +3,7 @@ import '@/styles/CourseView.css';
 
 export default function CourseCard({ course, role, onAction }) {
   const card = (
-    <div className="course-card">
+    <div className="card">
       <img src={course.img} alt={course.name} className="course-card-image" />
       <div className="course-card-content">
         {role && (
@@ -16,8 +16,8 @@ export default function CourseCard({ course, role, onAction }) {
 
         {onAction && (
           <button
-            className="login-button"
-            style={{ marginTop: '1rem', padding: '0.5rem', fontSize: '0.9rem' }}
+            className="btn btn-primary"
+            style={{ marginTop: '1rem', width: '100%' }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAction(course); }}
           >
             Matricular curso
