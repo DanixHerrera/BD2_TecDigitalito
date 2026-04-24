@@ -201,9 +201,155 @@ async function getFriendCourses(req, res) {
   }
 }
 
+async function getPendingRequests(req, res) {
+  const session = driver.session();
+  try {
+    const userId = req.user.userId;
+    const result = await session.run(
+      `
+      MATCH (requester:User)-[r:REQUESTED_FRIEND]->(me:User {id: $userId})
+      RETURN requester.id AS requesterId, requester.username AS username, r.createdAt AS createdAt
+      `,
+      { userId }
+    );
+    
+    const requests = result.records.map((record) => ({
+      userId: record.get('requesterId'),
+      username: record.get('username'),
+      createdAt: record.get('createdAt')
+    }));
+
+    // Hidratar con MongoDB para obtener info completa
+    if (requests.length > 0) {
+      const ids = requests.map(r => r.userId);
+      const users = await User.find({ _id: { $in: ids } }, 'username email fullName avatarUrl');
+      
+      const hydratedRequests = requests.map(req => {
+        const u = users.find(u => u._id.toString() === req.userId);
+        return { ...req, user: u };
+      });
+      return res.status(200).json({ ok: true, requests: hydratedRequests });
+    }
+
+    return res.status(200).json({ ok: true, requests: [] });
+  } catch (error) {
+    console.error('Error en getPendingRequests:', error);
+    return res.status(500).json({ ok: false, message: 'Error interno' });
+  } finally {
+    await session.close();
+  }
+}
+
+async function rejectFriendRequest(req, res) {
+  const session = driver.session();
+  try {
+    const currentUserId = req.user.userId;
+    const { userId: requesterId } = req.params;
+
+    const result = await session.run(
+      `
+      MATCH (u1:User {id: $requesterId})-[r:REQUESTED_FRIEND]->(u2:User {id: $currentUserId})
+      DELETE r
+      RETURN u1
+      `,
+      { requesterId, currentUserId }
+    );
+
+    if (result.records.length === 0) {
+      return res.status(404).json({ ok: false, message: 'Solicitud no encontrada' });
+    }
+
+    return res.status(200).json({ ok: true, message: 'Solicitud rechazada' });
+  } catch (error) {
+    console.error('Error en rejectFriendRequest:', error);
+    return res.status(500).json({ ok: false, message: 'Error interno' });
+  } finally {
+    await session.close();
+  }
+}
+
+async function removeFriend(req, res) {
+  const session = driver.session();
+  try {
+    const currentUserId = req.user.userId;
+    const { id: friendId } = req.params;
+
+    await session.run(
+      `
+      MATCH (u1:User {id: $currentUserId})-[r1:FRIEND]->(u2:User {id: $friendId})
+      MATCH (u2)-[r2:FRIEND]->(u1)
+      DELETE r1, r2
+      `,
+      { currentUserId, friendId }
+    );
+
+    return res.status(200).json({ ok: true, message: 'Amigo eliminado' });
+  } catch (error) {
+    console.error('Error en removeFriend:', error);
+    return res.status(500).json({ ok: false, message: 'Error interno' });
+  } finally {
+    await session.close();
+  }
+}
+
+async function searchUsers(req, res) {
+  try {
+    const { q } = req.query;
+    if (!q) {
+      return res.status(400).json({ ok: false, message: 'Falta parámetro de búsqueda' });
+    }
+
+    const regex = new RegExp(q, 'i');
+    const users = await User.find({
+      _id: { $ne: req.user.userId },
+      $or: [{ fullName: regex }, { email: regex }, { username: regex }]
+    }, 'username email fullName avatarUrl').limit(20);
+
+    return res.status(200).json({ ok: true, users });
+  } catch (error) {
+    console.error('Error en searchUsers:', error);
+    return res.status(500).json({ ok: false, message: 'Error interno' });
+  }
+}
+
+async function getStudentsByCourse(req, res) {
+  const session = driver.session();
+  try {
+    const { courseId } = req.params;
+    
+    const result = await session.run(
+      `
+      MATCH (u:User)-[:ENROLLED_IN]->(c:Course {id: $courseId})
+      RETURN u.id AS userId
+      `,
+      { courseId }
+    );
+
+    const studentIds = result.records.map(r => r.get('userId'));
+    
+    if (studentIds.length === 0) {
+      return res.status(200).json({ ok: true, students: [] });
+    }
+
+    const students = await User.find({ _id: { $in: studentIds } }, 'username email fullName avatarUrl');
+    
+    return res.status(200).json({ ok: true, students });
+  } catch (error) {
+    console.error('Error en getStudentsByCourse:', error);
+    return res.status(500).json({ ok: false, message: 'Error interno' });
+  } finally {
+    await session.close();
+  }
+}
+
 module.exports = {
   sendFriendRequest,
   acceptFriendRequest,
   listMyFriends,
   getFriendCourses,
+  getPendingRequests,
+  rejectFriendRequest,
+  removeFriend,
+  searchUsers,
+  getStudentsByCourse
 };

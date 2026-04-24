@@ -30,7 +30,7 @@ const MOCK_COURSES = {
     id: 'uuid-1', name: 'Bases de Datos II', code: 'IC-XXXX',
     bannerImageUrl: STOCK_IMAGES[5], startDate: '2026-02-10', endDate: '2026-06-20',
     description: 'Curso avanzado de bases de datos que cubre modelado NoSQL, bases distribuidas, optimización de consultas, índices avanzados y arquitecturas modernas como grafos y documentos.',
-    professor: { name: 'Dr. Carlos Ramírez', email: 'carlos.ramirez@tec.ac.cr' },
+    professor: { id: 'prof-carlos-01', name: 'Dr. Carlos Ramírez', email: 'carlos.ramirez@tec.ac.cr' },
     credits: 4, semester: 'I Semestre 2026',
     contentTree: [
       {
@@ -111,7 +111,7 @@ const MOCK_COURSES = {
     id: 'uuid-2', name: 'Arquitectura de Computadores', code: 'IC-XXXX',
     bannerImageUrl: STOCK_IMAGES[3], startDate: '2026-02-10', endDate: '2026-06-20',
     description: 'Organización y arquitectura de sistemas computacionales modernos: pipelines, jerarquía de memoria, multiprocesador y RISC/CISC.',
-    professor: { name: 'Dra. Laura Solano', email: 'laura.solano@tec.ac.cr' },
+    professor: { id: 'prof-laura-01', name: 'Dra. Laura Solano', email: 'laura.solano@tec.ac.cr' },
     credits: 4, semester: 'I Semestre 2026',
     contentTree: [
       {
@@ -138,7 +138,7 @@ const MOCK_COURSES = {
     id: 'uuid-3', name: 'Compiladores e Intérpretes', code: 'IC-XXXX',
     bannerImageUrl: STOCK_IMAGES[0], startDate: '2026-02-10', endDate: '2026-06-20',
     description: 'Estudio profundo de las fases de un compilador: análisis léxico, sintáctico, semántico y generación de código intermedio y objeto.',
-    professor: { name: 'Ing. Roberto Alfaro', email: 'roberto.alfaro@tec.ac.cr' },
+    professor: { id: 'prof-roberto-01', name: 'Ing. Roberto Alfaro', email: 'roberto.alfaro@tec.ac.cr' },
     credits: 4, semester: 'I Semestre 2026',
     contentTree: [
       {
@@ -186,7 +186,7 @@ const MOCK_COURSES = {
     id: 'uuid-4', name: 'Redes de Computadores', code: 'IC-XXXX',
     bannerImageUrl: STOCK_IMAGES[1], startDate: '2026-02-10', endDate: '2026-06-20',
     description: 'Fundamentos de redes, protocolos de comunicación, seguridad y administración de infraestructuras de red.',
-    professor: { name: 'Ing. Silvia Mata', email: 'silvia.mata@tec.ac.cr' },
+    professor: { id: 'prof-silvia-01', name: 'Ing. Silvia Mata', email: 'silvia.mata@tec.ac.cr' },
     credits: 3, semester: 'I Semestre 2026',
     contentTree: [
       {
