@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useLocation } from 'react-router';
+import { useParams, useLocation, useNavigate } from 'react-router';
 import { Info, BookOpen, ClipboardList, Users } from 'lucide-react';
 import CourseBanner from '../../components/courses/header/CourseBanner';
 import GeneralInfo from '../../components/courses/header/GeneralInfo';
@@ -20,6 +20,7 @@ const TABS = [
 export default function Course() {
   const { courseId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const role = location.state?.role || 'Docente';
   const isEditable = role === 'Docente';
 
@@ -42,6 +43,14 @@ export default function Course() {
 
   const handleSaveQuiz = (quiz) => {
     setEvaluations(prev => [...prev, quiz]);
+  };
+
+  const handleContactProfessor = () => {
+    if (course && course.professor && course.professor.id) {
+      navigate('/social/user-messages', { state: { contactUserId: course.professor.id } });
+    } else {
+      console.warn("No se puede contactar al docente: ID no disponible.");
+    }
   };
 
   if (loading) {
@@ -74,7 +83,13 @@ export default function Course() {
       </div>
 
       <div className="course-tab-content">
-        {activeTab === 'info' && <GeneralInfo course={course} />}
+        {activeTab === 'info' && (
+          <GeneralInfo 
+            course={course} 
+            isStudent={!isEditable} 
+            onContactProfessor={handleContactProfessor} 
+          />
+        )}
 
         {activeTab === 'content' && (
           <ContentArea contentTree={course.contentTree} isEditable={isEditable} />

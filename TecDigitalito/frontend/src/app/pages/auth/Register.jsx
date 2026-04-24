@@ -135,7 +135,7 @@ export default function Register() {
                 <input
                   id="username"
                   type="text"
-                  className={`register-input ${errors.username ? 'error' : ''}`}
+                  className={`form-input ${errors.username ? 'error' : ''}`}
                   placeholder="ej: d.herrera.1"
                   value={formData.username}
                   onChange={handleChange}
@@ -150,7 +150,7 @@ export default function Register() {
                 <input
                   id="fullName"
                   type="text"
-                  className={`register-input ${errors.fullName ? 'error' : ''}`}
+                  className={`form-input ${errors.fullName ? 'error' : ''}`}
                   placeholder="Daniel Herrera Córdoba"
                   value={formData.fullName}
                   onChange={handleChange}
@@ -167,7 +167,7 @@ export default function Register() {
               <input
                 id="email"
                 type="email"
-                className={`register-input ${errors.email ? 'error' : ''}`}
+                className={`form-input ${errors.email ? 'error' : ''}`}
                 placeholder="ejemplo@estudiantec.cr"
                 value={formData.email}
                 onChange={handleChange}
@@ -185,7 +185,7 @@ export default function Register() {
                   <input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    className={`register-input ${errors.password ? 'error' : ''}`}
+                    className={`form-input ${errors.password ? 'error' : ''}`}
                     value={formData.password}
                     onChange={handleChange}
                   />
@@ -207,7 +207,7 @@ export default function Register() {
                 <input
                   id="birthDate"
                   type="date"
-                  className={`register-input ${errors.birthDate ? 'error' : ''}`}
+                  className={`form-input ${errors.birthDate ? 'error' : ''}`}
                   value={formData.birthDate}
                   onChange={handleChange}
                 />
@@ -243,7 +243,7 @@ export default function Register() {
               </p>
             )}
 
-            <button type="submit" className="register-button">
+            <button type="submit" className="btn btn-primary" style={{marginTop: '1.5rem', width: '100%'}}>
               Registrarse
             </button>
           </form>

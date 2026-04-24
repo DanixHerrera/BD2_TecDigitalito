@@ -14,7 +14,7 @@ export default function Home() {
           <h1>Bienvenido, {user?.name || "Usuario"}</h1>
           <p className="home-subtitle">Tu plataforma de cursos virtuales del TEC.</p>
         </div>
-        <button onClick={logout} className="btn-logout">
+        <button onClick={logout} className="btn btn-danger">
           <LogOut size={18} />
           Cerrar Sesión
         </button>

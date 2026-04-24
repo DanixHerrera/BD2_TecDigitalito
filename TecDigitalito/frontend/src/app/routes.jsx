@@ -9,6 +9,9 @@ import Course from './pages/courses/Course'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import NotFound from './pages/NotFound'
+import Friends from './pages/social/Friends'
+import UserMessages from './pages/social/UserMessages'
+import Students from './pages/social/Students'
 
 export const router = createBrowserRouter([
   {
@@ -25,6 +28,9 @@ export const router = createBrowserRouter([
       { path: '/home',              element: <Home /> },
       { path: '/courses',           element: <Courses /> },
       { path: '/courses/:courseId',  element: <Course /> },
+      { path: '/social/friends',        element: <Friends /> },
+      { path: '/social/user-messages',  element: <UserMessages /> },
+      { path: '/social/students',       element: <Students /> },
       { path: '*',                  element: <NotFound /> },
     ],
   },

@@ -78,7 +78,7 @@ export default function Login() {
                 <input
                   id="username"
                   type="email"
-                  className={`login-input ${errors.username ? 'error' : ''}`}
+                  className={`form-input ${errors.username ? 'error' : ''}`}
                   placeholder="ejemplo@estudiantec.cr"
                   value={formData.username}
                   onChange={handleChange}
@@ -95,7 +95,7 @@ export default function Login() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  className={`login-input ${errors.password ? 'error' : ''}`}
+                  className={`form-input ${errors.password ? 'error' : ''}`}
                   value={formData.password}
                   onChange={handleChange}
                 />
@@ -110,7 +110,7 @@ export default function Login() {
               </div>
             </div>
 
-            <button type="submit" className="login-button">
+            <button type="submit" className="btn btn-primary" style={{marginTop: '1rem', width: '100%'}}>
               Iniciar Sesión
             </button>
           </form>

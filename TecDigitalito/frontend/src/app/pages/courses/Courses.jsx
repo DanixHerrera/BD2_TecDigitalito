@@ -41,31 +41,27 @@ export default function Courses() {
   }
 
   return (
-    <div className="courses-page">
-      <header className="courses-header" style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#1e293b' }}>Mis Cursos</h1>
-        <p style={{ color: '#64748b' }}></p>
+    <div className="page-container">
+      <header className="page-header">
+        <h1 className="page-title">Mis Cursos</h1>
       </header>
 
-      <div className="tabs-nav" style={{ display: 'flex', gap: '2.5rem', marginBottom: '2.5rem', borderBottom: '2px solid #f1f5f9' }}>
+      <div className="page-tabs">
         <button
           onClick={() => setActiveTab('catalog')}
-          className={activeTab === 'catalog' ? 'tab-active' : 'tab-inactive'}
-          style={tabStyle(activeTab === 'catalog')}
+          className={`page-tab ${activeTab === 'catalog' ? 'active' : ''}`}
         >
           Catálogo de Cursos
         </button>
         <button
           onClick={() => setActiveTab('enrolled')}
-          className={activeTab === 'enrolled' ? 'tab-active' : 'tab-inactive'}
-          style={tabStyle(activeTab === 'enrolled')}
+          className={`page-tab ${activeTab === 'enrolled' ? 'active' : ''}`}
         >
           Matriculados
         </button>
         <button
           onClick={() => setActiveTab('teaching')}
-          className={activeTab === 'teaching' ? 'tab-active' : 'tab-inactive'}
-          style={tabStyle(activeTab === 'teaching')}
+          className={`page-tab ${activeTab === 'teaching' ? 'active' : ''}`}
         >
           Impartidos
         </button>
@@ -106,14 +102,4 @@ export default function Courses() {
   );
 }
 
-const tabStyle = (isActive) => ({
-  padding: '0.75rem 0',
-  fontSize: '1rem',
-  fontWeight: 600,
-  background: 'none',
-  border: 'none',
-  borderBottom: isActive ? '3px solid #003DA6' : '3px solid transparent',
-  color: isActive ? '#003DA6' : '#64748b',
-  cursor: 'pointer',
-  transition: 'all 0.2s ease'
-});
+
