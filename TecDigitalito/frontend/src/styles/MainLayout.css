@@ -10,7 +10,6 @@
 
 .main-content-area {
     flex: 1;
-    padding: 1.5rem; /* p-6 */
 }
 
 @media (min-width: 1024px) {

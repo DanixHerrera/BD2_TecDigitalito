@@ -27,7 +27,7 @@
 .course-banner-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.18) 100%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.18) 100%);
 }
 
 .course-banner-content {
@@ -44,9 +44,9 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: rgba(255,255,255,0.18);
+  background: rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,0.28);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   color: #fff;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.8rem;
@@ -62,14 +62,14 @@
   font-weight: 700;
   color: #fff;
   line-height: 1.25;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .course-banner-dates {
   display: flex;
   align-items: center;
   gap: 1.25rem;
-  color: rgba(255,255,255,0.85);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 0.85rem;
   margin-top: 0.25rem;
 }
@@ -85,9 +85,9 @@
   top: 1rem;
   left: 1rem;
   z-index: 3;
-  background: rgba(255,255,255,0.18);
+  background: rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,0.28);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   color: #fff;
   border-radius: 10px;
   padding: 0.45rem 0.85rem;
@@ -101,7 +101,7 @@
 }
 
 .course-banner-back:hover {
-  background: rgba(255,255,255,0.32);
+  background: rgba(255, 255, 255, 0.32);
 }
 
 /* ── Tabs ── */
@@ -129,8 +129,6 @@
 
 .course-tab:hover {
   color: var(--primary);
-  background: var(--muted);
-  border-radius: 8px 8px 0 0;
 }
 
 .course-tab.active {
@@ -161,7 +159,7 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1.75rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .info-card-title {
@@ -226,25 +224,6 @@
   margin-bottom: 1rem;
 }
 
-.btn-add-section {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 1.15rem;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border: none;
-  border-radius: 10px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.15s;
-}
-
-.btn-add-section:hover {
-  background: var(--secondary);
-  transform: translateY(-1px);
-}
 
 .tree-node {
   margin-bottom: 1rem;
@@ -256,11 +235,11 @@
 }
 
 .tree-node:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 /* Accent for level 1 (Sections) */
-.section-tree > .tree-node {
+.section-tree>.tree-node {
   border-left: 4px solid var(--primary);
 }
 
@@ -271,7 +250,7 @@
   padding: 1rem 1.25rem;
   cursor: pointer;
   user-select: none;
-  background: linear-gradient(to right, rgba(0,0,0,0.01), transparent);
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.01), transparent);
 }
 
 .tree-node-header:hover {
@@ -297,7 +276,7 @@
 
 .tree-node-children {
   padding: 0.25rem 1rem 1rem 1.5rem;
-  background: rgba(0,0,0,0.005);
+  background: rgba(0, 0, 0, 0.005);
 }
 
 /* Recursive styling to demarcate nested cards */
@@ -305,7 +284,7 @@
   margin-top: 0.75rem;
   margin-bottom: 0;
   background: #fff;
-  border-color: rgba(0,0,0,0.08);
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
 
@@ -400,7 +379,7 @@
 .text-block-textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(0,61,166,0.1);
+  box-shadow: 0 0 0 3px rgba(0, 61, 166, 0.1);
 }
 
 .file-block-item {
@@ -467,15 +446,22 @@
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   padding: 0.4rem;
   min-width: 160px;
   animation: fadeInMenu 0.15s ease;
 }
 
 @keyframes fadeInMenu {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .block-add-menu-item {
@@ -533,6 +519,7 @@
   .quiz-form-row {
     grid-template-columns: 1fr 1fr;
   }
+
   .quiz-form-row.three {
     grid-template-columns: 2fr 1fr 1fr;
   }
@@ -565,7 +552,7 @@
 .quiz-input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(0,61,166,0.1);
+  box-shadow: 0 0 0 3px rgba(0, 61, 166, 0.1);
 }
 
 .quiz-question-card {
@@ -667,7 +654,7 @@
 }
 
 .eval-card:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .eval-card-header {
@@ -915,12 +902,55 @@
   max-width: 300px;
 }
 
+
+/* -- Contact Professor Button -- */
+.contact-professor-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  width: 100%;
+  justify-content: center;
+}
+
+.contact-professor-btn:hover {
+  background: var(--secondary);
+  transform: translateY(-1px);
+}
+
 /* ── Responsive ── */
 @media (max-width: 640px) {
-  .course-banner-title { font-size: 1.3rem; }
-  .course-banner-content { padding: 1.25rem; }
-  .course-tabs { gap: 0; }
-  .course-tab { padding: 0.7rem 1rem; font-size: 0.85rem; }
-  .students-search { min-width: 140px; }
-  .students-table th, .students-table td { padding: 0.65rem 1rem; }
+  .course-banner-title {
+    font-size: 1.3rem;
+  }
+
+  .course-banner-content {
+    padding: 1.25rem;
+  }
+
+  .course-tabs {
+    gap: 0;
+  }
+
+  .course-tab {
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .students-search {
+    min-width: 140px;
+  }
+
+  .students-table th,
+  .students-table td {
+    padding: 0.65rem 1rem;
+  }
 }
