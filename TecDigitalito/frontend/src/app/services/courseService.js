@@ -1,3 +1,4 @@
+
 /**
  * 
  *  Aclaracion sobre esta area, se tiene diferentes imagenes stock para demostrar como se ven los cursos y tambien
@@ -276,5 +277,13 @@ export const courseService = {
     return await res.json();
   },
 
-  
+  getCourseById: async (courseId, token) => {
+    if (USE_MOCK) {
+      await new Promise(r => setTimeout(r, 300));
+      return MOCK_COURSES[courseId] || null;
+    }
+    const res = await fetch(`/api/courses/${courseId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) return null;
+    return await res.json();
+  }
 };
