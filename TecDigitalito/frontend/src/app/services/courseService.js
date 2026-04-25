@@ -252,10 +252,9 @@ const mock_enroll = (id) => {
   return { success: true };
 };
 
-const mock_publishCourse = () => [
-  { course_id }
-  
-];
+const mock_publishCourse = (id) => ({ ok: true, message: 'Curso publicado', id });
+
+const mock_createCourse = (info) => ({ ok: true, course: { ...info, id: 'new-uuid-' + Date.now() } });
 
 export const courseService = {
   getEnrolledCourses: async (token) => {
@@ -293,12 +292,24 @@ export const courseService = {
   },
 
   publishCourse: async (courseId, token) => {
-    const res = await fetch(`/api/courses/publishCourse/${courseId}`,{headers:{ 'Authorization': `Bearer ${token}` }});
+    if (USE_MOCK) return mock_publishCourse(courseId);
+    const res = await fetch(`/api/courses/${courseId}/publish`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     return await res.json();
   },
 
   createCourse: async (courseInfo, token) => {
-    const res = await fetch(`api/courses/createCourse/${courseInfo}`},{headers:{ 'Authorization': `Bearer ${token}` }});
+    if (USE_MOCK) return mock_createCourse(courseInfo);
+    const res = await fetch('/api/courses', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(courseInfo)
+    });
     return await res.json();
   }
 };
