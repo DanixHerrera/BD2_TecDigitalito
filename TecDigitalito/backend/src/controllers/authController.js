@@ -253,7 +253,9 @@ async function login(req, res) {
       });
     }
 
-    const user = await User.findOne({ username });
+    const user = await User.findOne({
+      $or: [{ username: username }, { email: username.toLowerCase() }]
+    });
 
     if (!user) {
       const failedKey = getFailedKey(username);
