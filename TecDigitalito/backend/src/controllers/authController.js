@@ -185,9 +185,35 @@ async function register(req, res) {
       avatarUrl: avatarUrl || '',
     });
 
+    const token = jwt.sign(
+      {
+        userId: newUser._id.toString(),
+        username: newUser.username,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: SESSION_TTL }
+    );
+
+    await redisClient.set(
+      getSessionKey(newUser._id.toString(), token),
+      JSON.stringify({
+        userId: newUser._id.toString(),
+        username: newUser.username,
+        createdAt: new Date().toISOString(),
+      }),
+      { EX: SESSION_TTL }
+    );
+
+    res.cookie('session_token', token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: SESSION_TTL * 1000,
+    });
+
     return res.status(201).json({
       ok: true,
-      message: 'Usuario registrado correctamente',
+      message: 'Usuario registrado correctamente e inicio de sesión automático',
       user: {
         id: newUser._id,
         username: newUser.username,
