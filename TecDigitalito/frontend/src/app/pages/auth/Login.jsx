@@ -27,10 +27,11 @@ export default function Login() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validar todos los campos
+    // (Opcional: Si username ahora puede ser email o username, tal vez validateEmail sea muy restrictivo, pero lo dejamos como estaba)
     const newErrors = validateForm(formData, validationRules);
 
     if (Object.keys(newErrors).length > 0) {
@@ -38,27 +39,24 @@ export default function Login() {
       return;
     }
 
-    /* 
-       Como hacer el FETCH (JSON):
-       fetch('URL_BASE_DE_DATOS_O_API', {
-         method: 'POST', // O GET, PUT, DELETE
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ 
-           // Aquí van los datos que el backend espera
-           email: 'VALOR_DEL_CAMPO',
-           password: 'VALOR_DEL_CAMPO' 
-         })
-       })
-    */
-
-    // Simulacion del login 
-    login({
-      username: formData.username,
-      name: formData.username.split('@')[0],
-      role: 'student'
-    });
-
-    navigate('/');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: formData.username, password: formData.password })
+      });
+      const data = await res.json();
+      
+      if (!data.ok) { 
+        setErrors({ form: data.message }); 
+        return; 
+      }
+      
+      login(data.user);
+      navigate('/');
+    } catch (error) {
+      setErrors({ form: 'Error de conexión con el servidor.' });
+    }
   };
 
   return (
@@ -68,6 +66,7 @@ export default function Login() {
 
         <div className="login-content">
           <h2 className="login-title">Iniciar Sesión</h2>
+          {errors.form && <div className="error-message form-error" style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#ffe5e5', color: '#d32f2f', borderRadius: '4px', textAlign: 'center', fontSize: '0.875rem' }}>{errors.form}</div>}
 
           <form className="login-form" onSubmit={handleSubmit} noValidate>
             <div className="form-group">
