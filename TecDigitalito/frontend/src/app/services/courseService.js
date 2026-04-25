@@ -274,13 +274,13 @@ const mock_createCourse = (info) => ({ ok: true, course: { ...info, id: 'new-uui
 export const courseService = {
   getEnrolledCourses: async (token) => {
     if (USE_MOCK) return mock_getEnrolled();
-    const res = await fetch('/api/courses/enrolled', fetchOpts({ headers: { 'Authorization': `Bearer ${token}` } }));
+    const res = await fetch('/api/courses/my-enrolled', fetchOpts({ headers: { 'Authorization': `Bearer ${token}` } }));
     return await res.json();
   },
 
   getTeachingCourses: async (token) => {
     if (USE_MOCK) return mock_getTeaching();
-    const res = await fetch('/api/courses/teaching', fetchOpts({ headers: { 'Authorization': `Bearer ${token}` } }));
+    const res = await fetch('/api/courses/my-created', fetchOpts({ headers: { 'Authorization': `Bearer ${token}` } }));
     return await res.json();
   },
 
@@ -292,7 +292,7 @@ export const courseService = {
 
   enrollInCourse: async (courseId, token) => {
     if (USE_MOCK) return mock_enroll(courseId);
-    const res = await fetch(`/api/courses/enroll/${courseId}`, fetchOpts({ method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }));
+    const res = await fetch(`/api/courses/${courseId}/enroll`, fetchOpts({ method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }));
     return await res.json();
   },
 
@@ -301,7 +301,7 @@ export const courseService = {
       await new Promise(r => setTimeout(r, 300));
       return MOCK_COURSES[courseId] || null;
     }
-    const res = await fetch(`/api/courses/${courseId}`, fetchOpts({ headers: { 'Authorization': `Bearer ${token}` } }));
+    const res = await fetch(`/api/courses/${courseId}/content-tree`, fetchOpts({ headers: { 'Authorization': `Bearer ${token}` } }));
     if (!res.ok) return null;
     return await res.json();
   },
