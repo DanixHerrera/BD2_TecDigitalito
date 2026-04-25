@@ -1,5 +1,3 @@
-// NO COMPLETAMENTE SEGURO SI ES NECESARIO
-const Course = require('../../models/course');
 /**
  * 
  *  Aclaracion sobre esta area, se tiene diferentes imagenes stock para demostrar como se ven los cursos y tambien
@@ -278,30 +276,5 @@ export const courseService = {
     return await res.json();
   },
 
-  getCourseById: async (courseId, token) => {
-    if (USE_MOCK) {
-      await new Promise(r => setTimeout(r, 300));
-      return MOCK_COURSES[courseId] || null;
-    }
-    const res = await fetch(`/api/courses/${courseId}`, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) return null;
-    return await res.json();
-  },
-  /*
-  Este es un ejemplo de como usar a funcion
-  const courseData = {
-  courseCode: "CS101",
-  courseName: "Introduction to Computer Science",
-  description: "Learn the basics of programming and algorithms",
-  startDate: new Date("2026-05-01"),
-  endDate: new Date("2026-08-01"), // or null
-  imageUrl: "https://example.com/image.png", // optional
-  teacherId: "6612f8c9e13b2a4f9c123456", // must be a valid ObjectId string
-  published: true // optional (defaults to false)
-};
-  */
-  createCourse: async (courseData) => {
-    return await Course.create(courseData);
-  }
   
 };
