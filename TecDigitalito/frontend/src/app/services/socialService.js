@@ -23,7 +23,7 @@
  *  Para activar la conexión real: cambiar USE_MOCK a false. El backend ya está listo.
  */
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 // Helper: incluye el token JWT si existe
 const authHeaders = () => {
@@ -33,6 +33,12 @@ const authHeaders = () => {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 };
+
+const fetchOpts = (opts = {}) => ({
+  ...opts,
+  headers: { ...authHeaders(), ...(opts.headers || {}) },
+  credentials: 'include'
+});
 
 const MOCK_FRIENDS = [
   { userId: 'user-2', username: 'marialf', fullName: 'María López Fernández', email: 'maria.lopez@estudiantec.cr' },
@@ -54,39 +60,39 @@ const MOCK_ALL_USERS = [
 export const socialService = {
   getFriends: async () => {
     if (USE_MOCK) return MOCK_FRIENDS;
-    const res = await fetch('/api/social/friends', { headers: authHeaders() });
+    const res = await fetch('/api/social/friends', fetchOpts());
     const data = await res.json();
     return data.friends || [];
   },
 
   getRequests: async () => {
     if (USE_MOCK) return MOCK_REQUESTS;
-    const res = await fetch('/api/social/requests', { headers: authHeaders() });
+    const res = await fetch('/api/social/requests', fetchOpts());
     const data = await res.json();
     return data.requests || [];
   },
 
   sendRequest: async (userId) => {
     if (USE_MOCK) return { ok: true };
-    const res = await fetch(`/api/social/request/${userId}`, { method: 'POST', headers: authHeaders() });
+    const res = await fetch(`/api/social/request/${userId}`, fetchOpts({ method: 'POST' }));
     return await res.json();
   },
 
   acceptRequest: async (userId) => {
     if (USE_MOCK) return { ok: true };
-    const res = await fetch(`/api/social/accept/${userId}`, { method: 'POST', headers: authHeaders() });
+    const res = await fetch(`/api/social/accept/${userId}`, fetchOpts({ method: 'POST' }));
     return await res.json();
   },
 
   rejectRequest: async (userId) => {
     if (USE_MOCK) return { ok: true };
-    const res = await fetch(`/api/social/reject/${userId}`, { method: 'POST', headers: authHeaders() });
+    const res = await fetch(`/api/social/reject/${userId}`, fetchOpts({ method: 'POST' }));
     return await res.json();
   },
 
   removeFriend: async (id) => {
     if (USE_MOCK) return { ok: true };
-    const res = await fetch(`/api/social/friends/${id}`, { method: 'DELETE', headers: authHeaders() });
+    const res = await fetch(`/api/social/friends/${id}`, fetchOpts({ method: 'DELETE' }));
     return await res.json();
   },
 
@@ -100,7 +106,7 @@ export const socialService = {
         (u.email && u.email.toLowerCase().includes(q))
       );
     }
-    const res = await fetch(`/api/social/search?q=${encodeURIComponent(query)}`, { headers: authHeaders() });
+    const res = await fetch(`/api/social/search?q=${encodeURIComponent(query)}`, fetchOpts());
     const data = await res.json();
     return data.users || [];
   },
@@ -110,14 +116,14 @@ export const socialService = {
       // Retornar una mezcla de amigos y otros usuarios para simular un curso
       return MOCK_ALL_USERS.slice(0, 5); 
     }
-    const res = await fetch(`/api/social/students/${courseId}`, { headers: authHeaders() });
+    const res = await fetch(`/api/social/students/${courseId}`, fetchOpts());
     const data = await res.json();
     return data.students || [];
   },
 
   getFriendCourses: async (friendId) => {
     if (USE_MOCK) return { teachingCourseIds: [], enrolledCourseIds: [], courses: [] };
-    const res = await fetch(`/api/social/friends/${friendId}/courses`, { headers: authHeaders() });
+    const res = await fetch(`/api/social/friends/${friendId}/courses`, fetchOpts());
     return await res.json();
   }
 };

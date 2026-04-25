@@ -23,7 +23,22 @@ const STOCK_IMAGES = [
   "https://images.unsplash.com/photo-1649421493620-48f1bb0484cc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw2fHxlZHVjYXRpb24lMjBjbGFzc3Jvb20lMjBkYXRhYmFzZSUyMHRlY2hub2xvZ3l8ZW58MXx8fHwxNzc2OTI1NTg3fDA&ixlib=rb-4.1.0&q=80&w=1080"
 ];
 
-const USE_MOCK = true;
+const USE_MOCK = false;
+
+// Helper: incluye el token JWT si existe
+const authHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
+const fetchOpts = (opts = {}) => ({
+  ...opts,
+  headers: { ...authHeaders(), ...(opts.headers || {}) },
+  credentials: 'include'
+});
 
 const MOCK_COURSES = {
   'uuid-1': {
@@ -259,25 +274,25 @@ const mock_createCourse = (info) => ({ ok: true, course: { ...info, id: 'new-uui
 export const courseService = {
   getEnrolledCourses: async (token) => {
     if (USE_MOCK) return mock_getEnrolled();
-    const res = await fetch('/api/courses/enrolled', { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch('/api/courses/enrolled', fetchOpts({ headers: { 'Authorization': `Bearer ${token}` } }));
     return await res.json();
   },
 
   getTeachingCourses: async (token) => {
     if (USE_MOCK) return mock_getTeaching();
-    const res = await fetch('/api/courses/teaching', { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch('/api/courses/teaching', fetchOpts({ headers: { 'Authorization': `Bearer ${token}` } }));
     return await res.json();
   },
 
   getCatalog: async () => {
     if (USE_MOCK) return mock_getCatalog();
-    const res = await fetch('/api/courses/catalog');
+    const res = await fetch('/api/courses/catalog', fetchOpts());
     return await res.json();
   },
 
   enrollInCourse: async (courseId, token) => {
     if (USE_MOCK) return mock_enroll(courseId);
-    const res = await fetch(`/api/courses/enroll/${courseId}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch(`/api/courses/enroll/${courseId}`, fetchOpts({ method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }));
     return await res.json();
   },
 
@@ -286,30 +301,30 @@ export const courseService = {
       await new Promise(r => setTimeout(r, 300));
       return MOCK_COURSES[courseId] || null;
     }
-    const res = await fetch(`/api/courses/${courseId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch(`/api/courses/${courseId}`, fetchOpts({ headers: { 'Authorization': `Bearer ${token}` } }));
     if (!res.ok) return null;
     return await res.json();
   },
 
   publishCourse: async (courseId, token) => {
     if (USE_MOCK) return mock_publishCourse(courseId);
-    const res = await fetch(`/api/courses/${courseId}/publish`, {
+    const res = await fetch(`/api/courses/${courseId}/publish`, fetchOpts({
       method: 'PATCH',
       headers: { 'Authorization': `Bearer ${token}` }
-    });
+    }));
     return await res.json();
   },
 
   createCourse: async (courseInfo, token) => {
     if (USE_MOCK) return mock_createCourse(courseInfo);
-    const res = await fetch('/api/courses', {
+    const res = await fetch('/api/courses', fetchOpts({
       method: 'POST',
       headers: { 
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(courseInfo)
-    });
+    }));
     return await res.json();
   }
 };

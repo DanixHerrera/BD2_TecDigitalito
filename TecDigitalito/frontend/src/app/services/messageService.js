@@ -16,7 +16,7 @@
  *  Para activar la conexión real: cambiar USE_MOCK a false. El backend ya está listo.
  */
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 // Helper: incluye el token JWT si existe
 const authHeaders = () => {
@@ -26,6 +26,12 @@ const authHeaders = () => {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 };
+
+const fetchOpts = (opts = {}) => ({
+  ...opts,
+  headers: { ...authHeaders(), ...(opts.headers || {}) },
+  credentials: 'include'
+});
 
 const MOCK_CONVERSATIONS = [
   {
@@ -53,7 +59,7 @@ const MOCK_CONVERSATIONS = [
 export const messageService = {
   getConversations: async () => {
     if (USE_MOCK) return MOCK_CONVERSATIONS;
-    const res = await fetch('/api/messages/my-conversations', { headers: authHeaders() });
+    const res = await fetch('/api/messages/my-conversations', fetchOpts());
     const data = await res.json();
     return data.conversations || [];
   },
@@ -62,7 +68,7 @@ export const messageService = {
     if (USE_MOCK) {
       return MOCK_CONVERSATIONS.find(c => c.id === conversationId) || null;
     }
-    const res = await fetch(`/api/messages/conversation/${conversationId}`, { headers: authHeaders() });
+    const res = await fetch(`/api/messages/conversation/${conversationId}`, fetchOpts());
     const data = await res.json();
     return data.conversation || null;
   },
@@ -76,18 +82,17 @@ export const messageService = {
     if (receiverId) body.receiverId = receiverId;
     if (conversationId) body.conversationId = conversationId;
 
-    const res = await fetch('/api/messages', {
+    const res = await fetch('/api/messages', fetchOpts({
       method: 'POST',
-      headers: authHeaders(),
       body: JSON.stringify(body),
-    });
+    }));
     return await res.json();
   },
 
   startConversationWithUser: async (receiverId) => {
     if (USE_MOCK) return null;
     // Enviar un mensaje vacío no tiene sentido; buscamos si ya existe la conversación
-    const res = await fetch('/api/messages/my-conversations', { headers: authHeaders() });
+    const res = await fetch('/api/messages/my-conversations', fetchOpts());
     const data = await res.json();
     const convs = data.conversations || [];
     return convs.find(c => c.participants.includes(receiverId)) || null;
