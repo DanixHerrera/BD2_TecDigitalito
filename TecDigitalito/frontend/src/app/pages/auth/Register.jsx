@@ -61,7 +61,7 @@ export default function Register() {
     setVisualColor(color);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm(formData, validationRules);
     if (Object.keys(newErrors).length > 0) {
@@ -69,29 +69,32 @@ export default function Register() {
       return;
     }
 
-    /* 
-       Como hacer el FETCH (FormData): -> Agregando un archivo como lo es el avatar 
-       const data = new FormData();
-       data.append('NOMBRE_CAMPO', 'VALOR');
-       data.append('ARCHIVO', fileObject);
-    
-       Como hacer el FETCH (FormData):
-       fetch('URL_BASE_DE_DATOS_O_API', {
-         method: 'POST',
-         body: data // El navegador pone el Content-Type automaticamente
-       })
-    */
-
-    // Simulacion del registro iniciando sesión directamente
-    login({
-      username: formData.username,
-      name: formData.fullName,
-      email: formData.email,
-      avatar: avatarPreview,
-      role: 'student',
-    });
-
-    navigate('/');
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: formData.username,
+          fullName: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          birthDate: formData.birthDate,
+          avatarUrl: avatarPreview || ''
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (!data.ok) {
+        setErrors({ form: data.message });
+        return;
+      }
+      
+      login(data.user);
+      navigate('/');
+    } catch (error) {
+      setErrors({ form: 'Error de conexión con el servidor.' });
+    }
   };
 
   return (
