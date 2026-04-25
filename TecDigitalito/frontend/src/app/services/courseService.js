@@ -252,6 +252,11 @@ const mock_enroll = (id) => {
   return { success: true };
 };
 
+const mock_publishCourse = () => [
+  { course_id }
+  
+];
+
 export const courseService = {
   getEnrolledCourses: async (token) => {
     if (USE_MOCK) return mock_getEnrolled();
@@ -284,6 +289,16 @@ export const courseService = {
     }
     const res = await fetch(`/api/courses/${courseId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) return null;
+    return await res.json();
+  },
+
+  publishCourse: async (courseId, token) => {
+    const res = await fetch(`/api/courses/publishCourse/${courseId}`,{headers:{ 'Authorization': `Bearer ${token}` }});
+    return await res.json();
+  },
+
+  createCourse: async (courseInfo, token) => {
+    const res = await fetch(`api/courses/createCourse/${courseInfo}`},{headers:{ 'Authorization': `Bearer ${token}` }});
     return await res.json();
   }
 };
