@@ -181,10 +181,7 @@ async function publishCourse(req, res) {
   try {
     const { id } = req.params;
 
-    const course = await Course.findOne({
-      _id: id,
-      teacherId: req.user.userId,
-    });
+    const course = await courseSevices.publishCourse(id,req.user.userId);
 
     if (!course) {
       return res.status(404).json({
@@ -192,9 +189,6 @@ async function publishCourse(req, res) {
         message: 'Curso no encontrado o no pertenece al usuario',
       });
     }
-
-    course.published = true;
-    await course.save();
 
     return res.status(200).json({
       ok: true,
