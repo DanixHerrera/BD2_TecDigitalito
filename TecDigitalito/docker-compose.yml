@@ -1,0 +1,65 @@
+services:
+  # Backend Service
+  backend:
+    build: ./backend
+    container_name: backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - MONGO_URI=mongodb+srv://tecdigitalito:u1A0EdTEaMBPSGwB@cluster0.0dnfnwz.mongodb.net/tecdigitalito?appName=Cluster0
+      - REDIS_URL=redis://:redis123@redis:6379
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USERNAME=neo4j
+      - NEO4J_PASSWORD=test1234
+      - NEO4J_DATABASE=neo4j
+      - RAVEN_URL=http://147.5.115.6:8080
+      - RAVEN_DATABASE=TecDigitalitoMessages
+      - JWT_SECRET=super_secreto_cambiar
+      - SESSION_TTL=3600
+      - LOGIN_ATTEMPTS_TTL=900
+      - BLOCK_TTL=900
+      - RESET_PASSWORD_TTL=900
+      - FRONTEND_URL=http://localhost
+    depends_on:
+      - redis
+      - neo4j
+
+  # Nginx
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  # Redis db
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass "redis123"
+    volumes:
+      - redis-data:/data
+
+  # Neo4j db
+  neo4j:
+    image: neo4j:5
+    container_name: neo4j
+    restart: always
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/test1234
+    volumes:
+      - neo4j-data:/data
+
+volumes:
+  redis-data:
+  neo4j-data:

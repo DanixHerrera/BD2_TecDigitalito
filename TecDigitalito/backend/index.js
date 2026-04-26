@@ -19,6 +19,7 @@ const evaluationRoutes = require('./src/routes/evaluation');
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+
 app.use('/api', sectionRoutes);
 app.use('/api', sectionContentRoutes);
 app.use('/api/messages', messageRoutes);
@@ -35,23 +36,6 @@ app.get('/profile', authMiddleware, (req, res) => {
     user: req.user,
   });
 });
-app.get('/health/redis-set', async (req, res) => {
-  try {
-    await redisClient.set('prueba', 'hola_redis', { EX: 60 });
-    res.json({ ok: true, message: 'Valor guardado en Redis por 60 segundos' });
-  } catch (error) {
-    res.status(500).json({ ok: false, error: error.message });
-  }
-});
-
-app.get('/health/redis-get', async (req, res) => {
-  try {
-    const valor = await redisClient.get('prueba');
-    res.json({ ok: true, valor });
-  } catch (error) {
-    res.status(500).json({ ok: false, error: error.message });
-  }
-});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
@@ -65,13 +49,13 @@ async function iniciar() {
   const redisConectado = await connectRedis();
   if (!redisConectado) process.exit(1);
 
-  console.log('Iniciando Neo4j...');
-  const neo4jConectado = await connectNeo4j();
-  if (!neo4jConectado) process.exit(1);
-
   console.log('Iniciando RavenDB...');
   const ravenConectado = connectRaven();
   if (!ravenConectado) process.exit(1);
+
+  console.log('Iniciando Neo4j...');
+  const neo4jConectado = await connectNeo4j();
+  if (!neo4jConectado) process.exit(1);
 
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {

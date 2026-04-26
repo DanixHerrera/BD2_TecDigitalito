@@ -254,18 +254,16 @@ async function login(req, res) {
     }
 
     const user = await User.findOne({
-      $or: [{ username: username }, { email: username.toLowerCase() }]
+      $or: [{ username: username }, { email: username.toLowerCase() }],
     });
 
     if (!user) {
       const failedKey = getFailedKey(username);
       const attempts = await redisClient.incr(failedKey);
       await redisClient.expire(failedKey, LOGIN_ATTEMPTS_TTL);
-
       if (attempts >= 5) {
         await redisClient.set(blockedKey, 'true', { EX: BLOCK_TTL });
       }
-
       return res.status(401).json({
         ok: false,
         message: 'Credenciales inválidas',
@@ -278,11 +276,9 @@ async function login(req, res) {
       const failedKey = getFailedKey(username);
       const attempts = await redisClient.incr(failedKey);
       await redisClient.expire(failedKey, LOGIN_ATTEMPTS_TTL);
-
       if (attempts >= 5) {
         await redisClient.set(blockedKey, 'true', { EX: BLOCK_TTL });
       }
-
       return res.status(401).json({
         ok: false,
         message: 'Credenciales inválidas',

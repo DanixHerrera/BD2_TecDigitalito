@@ -16,6 +16,16 @@
 
 
 
+// Helper que construye las opciones de fetch incluyendo cookies de sesión
+const fetchOpts = (opts = {}) => ({
+  credentials: 'include',
+  headers: {
+    'Content-Type': 'application/json',
+    ...(opts.headers || {}),
+  },
+  ...opts,
+});
+
 export const courseService = {
   getEnrolledCourses: async (token) => {
     const res = await fetch('/api/courses/my-enrolled', fetchOpts({ headers: { 'Authorization': `Bearer ${token}` } }));
