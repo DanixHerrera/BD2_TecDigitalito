@@ -232,6 +232,13 @@ async function enrollInCourse(req, res) {
       });
     }
 
+    if (course.teacherId && course.teacherId.toString() === req.user.userId) {
+      return res.status(400).json({
+        ok: false,
+        message: 'No puedes matricularte en tu propio curso',
+      });
+    }
+
     await session.run(
       `
       MERGE (u:User {id: $userId})
