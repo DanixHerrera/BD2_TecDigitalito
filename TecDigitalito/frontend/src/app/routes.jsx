@@ -5,6 +5,7 @@ import MainLayout from './layouts/MainLayout'
 // Pages
 import Home from './pages/Home'
 import Courses from './pages/courses/Courses'
+import CourseCreate from './pages/courses/CourseCreate'
 import Course from './pages/courses/Course'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
       { path: '/',                  element: <Home /> },
       { path: '/home',              element: <Home /> },
       { path: '/courses',           element: <Courses /> },
+      { path: '/courses/create',    element: <CourseCreate /> },
       { path: '/courses/:courseId',  element: <Course /> },
       { path: '/social/friends',        element: <Friends /> },
       { path: '/social/user-messages',  element: <UserMessages /> },
