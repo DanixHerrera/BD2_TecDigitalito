@@ -2,6 +2,10 @@ const User = require('../models/User');
 const Course = require('../models/Course');
 const { driver } = require('../databases/neo4j');
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 async function sendFriendRequest(req, res) {
   const session = driver.session();
 
@@ -25,7 +29,7 @@ async function sendFriendRequest(req, res) {
       });
     }
 
-    const result = await session.run(
+    await session.run(
       `
       MERGE (u1:User {id: $requesterId})
       ON CREATE SET u1.username = $requesterUsername
@@ -203,6 +207,7 @@ async function getFriendCourses(req, res) {
 
 async function getPendingRequests(req, res) {
   const session = driver.session();
+
   try {
     const userId = req.user.userId;
     const result = await session.run(
@@ -212,22 +217,25 @@ async function getPendingRequests(req, res) {
       `,
       { userId }
     );
-    
+
     const requests = result.records.map((record) => ({
       userId: record.get('requesterId'),
       username: record.get('username'),
-      createdAt: record.get('createdAt')
+      createdAt: record.get('createdAt'),
     }));
 
-    // Hidratar con MongoDB para obtener info completa
     if (requests.length > 0) {
-      const ids = requests.map(r => r.userId);
-      const users = await User.find({ _id: { $in: ids } }, 'username email fullName avatarUrl');
-      
-      const hydratedRequests = requests.map(req => {
-        const u = users.find(u => u._id.toString() === req.userId);
-        return { ...req, user: u };
+      const ids = requests.map((request) => request.userId);
+      const users = await User.find(
+        { _id: { $in: ids } },
+        'username email fullName avatarUrl'
+      );
+
+      const hydratedRequests = requests.map((request) => {
+        const user = users.find((candidate) => candidate._id.toString() === request.userId);
+        return { ...request, user };
       });
+
       return res.status(200).json({ ok: true, requests: hydratedRequests });
     }
 
@@ -242,6 +250,7 @@ async function getPendingRequests(req, res) {
 
 async function rejectFriendRequest(req, res) {
   const session = driver.session();
+
   try {
     const currentUserId = req.user.userId;
     const { userId: requesterId } = req.params;
@@ -270,6 +279,7 @@ async function rejectFriendRequest(req, res) {
 
 async function removeFriend(req, res) {
   const session = driver.session();
+
   try {
     const currentUserId = req.user.userId;
     const { id: friendId } = req.params;
@@ -294,29 +304,52 @@ async function removeFriend(req, res) {
 
 async function searchUsers(req, res) {
   try {
-    const { q } = req.query;
-    if (!q) {
-      return res.status(400).json({ ok: false, message: 'Falta parámetro de búsqueda' });
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ ok: false, message: 'Usuario no identificado' });
     }
 
-    const regex = new RegExp(q, 'i');
-    const users = await User.find({
-      _id: { $ne: req.user.userId },
-      $or: [{ fullName: regex }, { email: regex }, { username: regex }]
-    }, 'username email fullName avatarUrl').limit(20);
+    // Validar si el ID es un ObjectId válido para evitar errores de casteo (400)
+    const mongoose = require('mongoose');
+    const isValidId = mongoose.Types.ObjectId.isValid(req.user.userId);
+    
+    const baseFilter = isValidId ? { _id: { $ne: req.user.userId } } : {};
+    let users;
+
+    if (!q) {
+      users = await User.find(
+        baseFilter,
+        'username email fullName avatarUrl'
+      )
+        .sort({ lastLoginAt: -1, createdAt: -1 })
+        .limit(20);
+    } else {
+      const regex = new RegExp(escapeRegex(q), 'i');
+      const filter = {
+        ...baseFilter,
+        $or: [{ fullName: regex }, { email: regex }, { username: regex }],
+      };
+
+      users = await User.find(
+        filter,
+        'username email fullName avatarUrl'
+      ).limit(20);
+    }
 
     return res.status(200).json({ ok: true, users });
   } catch (error) {
-    console.error('Error en searchUsers:', error);
-    return res.status(500).json({ ok: false, message: 'Error interno' });
+    console.error('Error detallado en searchUsers:', error);
+    return res.status(500).json({ ok: false, message: 'Error interno al buscar usuarios' });
   }
 }
 
 async function getStudentsByCourse(req, res) {
   const session = driver.session();
+
   try {
     const { courseId } = req.params;
-    
+
     const result = await session.run(
       `
       MATCH (u:User)-[:ENROLLED_IN]->(c:Course {id: $courseId})
@@ -325,14 +358,17 @@ async function getStudentsByCourse(req, res) {
       { courseId }
     );
 
-    const studentIds = result.records.map(r => r.get('userId'));
-    
+    const studentIds = result.records.map((record) => record.get('userId'));
+
     if (studentIds.length === 0) {
       return res.status(200).json({ ok: true, students: [] });
     }
 
-    const students = await User.find({ _id: { $in: studentIds } }, 'username email fullName avatarUrl');
-    
+    const students = await User.find(
+      { _id: { $in: studentIds } },
+      'username email fullName avatarUrl'
+    );
+
     return res.status(200).json({ ok: true, students });
   } catch (error) {
     console.error('Error en getStudentsByCourse:', error);
@@ -351,5 +387,5 @@ module.exports = {
   rejectFriendRequest,
   removeFriend,
   searchUsers,
-  getStudentsByCourse
+  getStudentsByCourse,
 };

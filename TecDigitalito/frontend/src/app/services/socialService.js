@@ -73,7 +73,11 @@ export const socialService = {
   },
 
   searchUsers: async (query) => {
-    const res = await fetch(`/api/social/search?q=${encodeURIComponent(query)}`, fetchOpts());
+    const normalizedQuery = typeof query === 'string' ? query.trim() : '';
+    const endpoint = normalizedQuery
+      ? `/api/social/search?q=${encodeURIComponent(normalizedQuery)}`
+      : '/api/social/search';
+    const res = await fetch(endpoint, fetchOpts());
     const data = await res.json();
     return data.users || [];
   },
