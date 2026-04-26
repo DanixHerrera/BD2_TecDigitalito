@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Plus } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import CourseCard from '../../components/courses/CourseCard';
 import Catalog from './Catalog';
 import { courseService } from '../../services/courseService';
@@ -7,32 +9,32 @@ import '@/styles/CourseView.css';
 
 export default function Courses() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('catalog');
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [teachingCourses, setTeachingCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const loadCourses = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token'); 
+      
+      const [enrolled, teaching] = await Promise.all([
+        courseService.getEnrolledCourses(token),
+        courseService.getTeachingCourses(token)
+      ]);
+
+      setEnrolledCourses(enrolled.courses || []);
+      setTeachingCourses(teaching.courses || []);
+    } catch (error) {
+      console.error('Error al cargar cursos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadCourses = async () => {
-      setLoading(true);
-      try {
-        // En una implementación real, el token vendría del contexto de autenticación
-        const token = localStorage.getItem('token'); 
-        
-        const [enrolled, teaching] = await Promise.all([
-          courseService.getEnrolledCourses(token),
-          courseService.getTeachingCourses(token)
-        ]);
-
-        setEnrolledCourses(enrolled);
-        setTeachingCourses(teaching);
-      } catch (error) {
-        console.error('Error al cargar cursos:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadCourses();
   }, []);
 
@@ -42,8 +44,13 @@ export default function Courses() {
 
   return (
     <div className="page-container">
-      <header className="page-header">
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="page-title">Mis Cursos</h1>
+        {activeTab === 'teaching' && (
+          <button onClick={() => navigate('/courses/create')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Plus size={18} /> Crear Curso
+          </button>
+        )}
       </header>
 
       <div className="page-tabs">
@@ -72,12 +79,18 @@ export default function Courses() {
           <div className="course-grid">
             {enrolledCourses.map(c => (
               <CourseCard 
-                key={c.course_id} 
-                course={{ ...c, name: c.course_name, code: c.course_code, img: c.course_image_url }} 
+                key={c._id} 
+                course={{ 
+                  ...c, 
+                  course_id: c._id,
+                  name: c.courseName || c.course_name, 
+                  code: c.courseCode || c.course_code, 
+                  img: c.imageUrl || c.course_image_url || 'https://via.placeholder.com/300x150?text=No+Image'
+                }} 
                 role="Estudiante" 
               />
             ))}
-            {enrolledCourses.length === 0 && <p>No estás matriculado en ningún curso.</p>}
+            {enrolledCourses.length === 0 && <p className="empty-state">No estás matriculado en ningún curso.</p>}
           </div>
         )}
         
@@ -85,12 +98,19 @@ export default function Courses() {
           <div className="course-grid">
             {teachingCourses.map(c => (
               <CourseCard 
-                key={c.course_id} 
-                course={{ ...c, name: c.course_name, code: c.course_code, img: c.course_image_url }} 
+                key={c._id} 
+                course={{ 
+                  ...c, 
+                  course_id: c._id,
+                  name: c.courseName || c.course_name, 
+                  code: c.courseCode || c.course_code, 
+                  img: c.imageUrl || c.course_image_url || 'https://via.placeholder.com/300x150?text=No+Image'
+                }} 
                 role="Docente" 
+                onPublishSuccess={loadCourses}
               />
             ))}
-            {teachingCourses.length === 0 && <p>No tienes cursos a tu cargo.</p>}
+            {teachingCourses.length === 0 && <p className="empty-state">No tienes cursos a tu cargo.</p>}
           </div>
         )}
 

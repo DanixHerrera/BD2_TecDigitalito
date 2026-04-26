@@ -12,7 +12,7 @@ export default function Catalog({ showTitle = false }) {
             setLoading(true);
             try {
                 const data = await courseService.getCatalog();
-                setCatalogCourses(data);
+                setCatalogCourses(data.courses || []);
             } catch (error) {
                 console.error('Error al cargar catálogo:', error);
             } finally {
@@ -26,8 +26,11 @@ export default function Catalog({ showTitle = false }) {
     const handleEnroll = async (course) => {
         const token = localStorage.getItem('token');
         const result = await courseService.enrollInCourse(course.course_id, token);
-        if (result.success) {
-            alert(`Matrícula exitosa en ${course.course_name}`);
+        if (result.ok) {
+            alert(`Matrícula exitosa en ${course.name}`);
+            // Opcional: Recargar catálogo o redirigir
+        } else {
+            alert(result.message || 'Error en la matrícula');
         }
     };
 
@@ -41,12 +44,13 @@ export default function Catalog({ showTitle = false }) {
             <div className="course-grid">
                 {catalogCourses.map(course => (
                     <CourseCard
-                        key={course.course_id}
+                        key={course._id}
                         course={{ 
                             ...course, 
-                            name: course.course_name, 
-                            code: course.course_code, 
-                            img: course.course_image_url 
+                            course_id: course._id,
+                            name: course.courseName || course.course_name, 
+                            code: course.courseCode || course.course_code, 
+                            img: course.imageUrl || course.course_image_url || 'https://via.placeholder.com/300x150?text=No+Image'
                         }}
                         onAction={handleEnroll}
                     />

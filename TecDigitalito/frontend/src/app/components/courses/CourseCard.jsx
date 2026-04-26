@@ -1,7 +1,8 @@
 import { Link } from 'react-router';
+import { courseService } from '../../services/courseService';
 import '@/styles/CourseView.css';
 
-export default function CourseCard({ course, role, onAction }) {
+export default function CourseCard({ course, role, onAction, onPublishSuccess }) {
   const card = (
     <div className="card">
       <img src={course.img} alt={course.name} className="course-card-image" />
@@ -21,6 +22,27 @@ export default function CourseCard({ course, role, onAction }) {
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAction(course); }}
           >
             Matricular curso
+          </button>
+        )}
+
+        {role === 'Docente' && !course.published && (
+          <button
+            className="btn btn-outline"
+            style={{ marginTop: '1rem', width: '100%', borderColor: '#f59e0b', color: '#f59e0b' }}
+            onClick={async (e) => { 
+              e.preventDefault(); 
+              e.stopPropagation(); 
+              const token = localStorage.getItem('token');
+              const res = await courseService.publishCourse(course.course_id, token);
+              if (res.ok) {
+                alert('Curso publicado con éxito');
+                if (onPublishSuccess) onPublishSuccess();
+              } else {
+                alert(res.message || 'Error al publicar');
+              }
+            }}
+          >
+            Publicar Curso
           </button>
         )}
       </div>
