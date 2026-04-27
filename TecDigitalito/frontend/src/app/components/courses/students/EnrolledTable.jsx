@@ -65,7 +65,11 @@ export default function EnrolledTable({ students = [] }) {
               <tr key={s.id || s.userId}>
                 <td>
                   <div className="student-name-cell">
-                    <span className="student-avatar">{getInitials(s.fullName || s.username)}</span>
+                    {s.avatarUrl ? (
+                      <img src={s.avatarUrl} alt={s.fullName || s.username} className="student-avatar" style={{ objectFit: 'cover' }} />
+                    ) : (
+                      <span className="student-avatar">{getInitials(s.fullName || s.username)}</span>
+                    )}
                     {s.fullName || s.username}
                   </div>
                 </td>
