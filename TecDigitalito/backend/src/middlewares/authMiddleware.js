@@ -5,9 +5,21 @@ function getSessionKey(userId, token) {
   return `session:${userId}:${token}`;
 }
 
+function extractToken(req) {
+  const cookieToken = req.cookies?.session_token;
+  if (cookieToken) return cookieToken;
+
+  const authHeader = req.headers?.authorization || req.headers?.Authorization;
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7).trim();
+  }
+
+  return null;
+}
+
 async function authMiddleware(req, res, next) {
   try {
-    const token = req.cookies?.session_token;
+    const token = extractToken(req);
 
     if (!token) {
       return res.status(401).json({

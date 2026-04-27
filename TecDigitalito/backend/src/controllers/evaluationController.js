@@ -1,7 +1,31 @@
 const Course = require('../models/Course');
 const Evaluation = require('../models/Evaluation');
 const EvaluationResult = require('../models/EvaluationResult');
-const { driver } = require('../databases/neo4j');
+const { getCourseAccess } = require('../services/courseAccessService');
+
+function serializeEvaluation(evaluation, isTeacher) {
+  const now = new Date();
+  let status = 'scheduled';
+
+  if (now >= new Date(evaluation.startDate) && now <= new Date(evaluation.endDate)) {
+    status = 'active';
+  } else if (now > new Date(evaluation.endDate)) {
+    status = 'finished';
+  }
+
+  return {
+    id: evaluation._id.toString(),
+    title: evaluation.title,
+    startDate: evaluation.startDate,
+    endDate: evaluation.endDate,
+    status,
+    questions: evaluation.questions.map((question) => ({
+      text: question.text,
+      options: question.options.map((option) => option.text),
+      ...(isTeacher ? { correctOptionIndex: question.correctOptionIndex } : {}),
+    })),
+  };
+}
 
 async function createEvaluation(req, res) {
   try {
@@ -24,7 +48,8 @@ async function createEvaluation(req, res) {
       });
     }
 
-    if (course.teacherId.toString() !== req.user.userId) {
+    const access = await getCourseAccess(course, req.user.userId);
+    if (!access.canCreateEvaluations) {
       return res.status(403).json({
         ok: false,
         message: 'No tienes permiso para crear evaluaciones en este curso',
@@ -56,12 +81,28 @@ async function createEvaluation(req, res) {
 async function getEvaluationsByCourse(req, res) {
   try {
     const { id: courseId } = req.params;
+    const course = await Course.findById(courseId);
+
+    if (!course) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Curso no encontrado',
+      });
+    }
+
+    const access = await getCourseAccess(course, req.user.userId);
+    if (!access.canViewCourse) {
+      return res.status(403).json({
+        ok: false,
+        message: 'No tienes acceso a las evaluaciones de este curso',
+      });
+    }
 
     const evaluations = await Evaluation.find({ courseId }).sort({ createdAt: -1 });
 
     return res.status(200).json({
       ok: true,
-      evaluations,
+      evaluations: evaluations.map((evaluation) => serializeEvaluation(evaluation, access.isTeacher)),
     });
   } catch (error) {
     console.error('Error en getEvaluationsByCourse:', error);
@@ -73,8 +114,6 @@ async function getEvaluationsByCourse(req, res) {
 }
 
 async function submitEvaluation(req, res) {
-  const neoSession = driver.session();
-
   try {
     const { id: evaluationId } = req.params;
     const { answers } = req.body;
@@ -96,6 +135,18 @@ async function submitEvaluation(req, res) {
       });
     }
 
+    const existingResult = await EvaluationResult.findOne({
+      evaluationId,
+      studentId,
+    });
+
+    if (existingResult) {
+      return res.status(409).json({
+        ok: false,
+        message: 'Ya respondiste esta evaluación',
+      });
+    }
+
     const now = new Date();
     if (now < new Date(evaluation.startDate) || now > new Date(evaluation.endDate)) {
       return res.status(400).json({
@@ -104,18 +155,16 @@ async function submitEvaluation(req, res) {
       });
     }
 
-    const enrollmentCheck = await neoSession.run(
-      `
-      MATCH (u:User {id: $studentId})-[:ENROLLED_IN]->(c:Course {id: $courseId})
-      RETURN c
-      `,
-      {
-        studentId,
-        courseId: evaluation.courseId.toString(),
-      }
-    );
+    const course = await Course.findById(evaluation.courseId);
+    if (!course) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Curso no encontrado',
+      });
+    }
 
-    if (enrollmentCheck.records.length === 0) {
+    const access = await getCourseAccess(course, studentId);
+    if (!access.isEnrolled) {
       return res.status(403).json({
         ok: false,
         message: 'Debes estar matriculado en el curso para responder la evaluación',
@@ -160,8 +209,6 @@ async function submitEvaluation(req, res) {
       ok: false,
       message: 'Error interno del servidor',
     });
-  } finally {
-    await neoSession.close();
   }
 }
 
@@ -169,6 +216,22 @@ async function getMyResultsByCourse(req, res) {
   try {
     const { id: courseId } = req.params;
     const studentId = req.user.userId;
+    const course = await Course.findById(courseId);
+
+    if (!course) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Curso no encontrado',
+      });
+    }
+
+    const access = await getCourseAccess(course, studentId);
+    if (!access.canViewOwnResults) {
+      return res.status(403).json({
+        ok: false,
+        message: 'No puedes ver notas de este curso',
+      });
+    }
 
     const results = await EvaluationResult.find({
       courseId,
@@ -177,7 +240,14 @@ async function getMyResultsByCourse(req, res) {
 
     return res.status(200).json({
       ok: true,
-      results,
+      results: results.map((result) => ({
+        id: result._id.toString(),
+        evaluationId: result.evaluationId.toString(),
+        score: result.score,
+        correctAnswers: result.correctAnswers,
+        totalQuestions: result.totalQuestions,
+        submittedAt: result.submittedAt,
+      })),
     });
   } catch (error) {
     console.error('Error en getMyResultsByCourse:', error);

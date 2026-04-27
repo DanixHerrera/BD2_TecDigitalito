@@ -1,382 +1,144 @@
 const User = require('../models/User');
-const Course = require('../models/Course');
-const { driver } = require('../databases/neo4j');
+const SocialRepository = require('../repositories/SocialRepository');
 
-function escapeRegex(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+const sendFriendRequest = async (req, res) => {
+  const requesterId = req.user.userId;
+  const { userId: targetUserId } = req.params;
 
-async function sendFriendRequest(req, res) {
-  const session = driver.session();
-
-  try {
-    const requesterId = req.user.userId;
-    const { userId: targetUserId } = req.params;
-
-    if (requesterId === targetUserId) {
-      return res.status(400).json({
-        ok: false,
-        message: 'No puedes enviarte una solicitud a ti misma',
-      });
-    }
-
-    const targetUser = await User.findById(targetUserId);
-
-    if (!targetUser) {
-      return res.status(404).json({
-        ok: false,
-        message: 'Usuario destino no encontrado',
-      });
-    }
-
-    await session.run(
-      `
-      MERGE (u1:User {id: $requesterId})
-      ON CREATE SET u1.username = $requesterUsername
-      MERGE (u2:User {id: $targetUserId})
-      ON CREATE SET u2.username = $targetUsername
-      MERGE (u1)-[r:REQUESTED_FRIEND]->(u2)
-      RETURN r
-      `,
-      {
-        requesterId,
-        requesterUsername: req.user.username,
-        targetUserId,
-        targetUsername: targetUser.username,
-      }
-    );
-
-    return res.status(200).json({
-      ok: true,
-      message: 'Solicitud de amistad enviada',
-    });
-  } catch (error) {
-    console.error('Error en sendFriendRequest:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
-  } finally {
-    await session.close();
+  if (requesterId === targetUserId) {
+    return res.error('No puedes enviarte una solicitud a ti misma');
   }
-}
 
-async function acceptFriendRequest(req, res) {
-  const session = driver.session();
+  const [requesterUser, targetUser] = await Promise.all([
+    User.findById(requesterId),
+    User.findById(targetUserId),
+  ]);
 
-  try {
-    const currentUserId = req.user.userId;
-    const { userId: requesterId } = req.params;
+  if (!targetUser) return res.errorNotFound('Usuario destino no encontrado');
+  if (!requesterUser) return res.errorNotFound('Usuario solicitante no encontrado');
 
-    const result = await session.run(
-      `
-      MATCH (u1:User {id: $requesterId})-[r:REQUESTED_FRIEND]->(u2:User {id: $currentUserId})
-      DELETE r
-      MERGE (u1)-[:FRIEND]->(u2)
-      MERGE (u2)-[:FRIEND]->(u1)
-      RETURN u1, u2
-      `,
-      {
-        requesterId,
-        currentUserId,
-      }
-    );
-
-    if (result.records.length === 0) {
-      return res.status(404).json({
-        ok: false,
-        message: 'Solicitud de amistad no encontrada',
-      });
-    }
-
-    return res.status(200).json({
-      ok: true,
-      message: 'Solicitud aceptada correctamente',
-    });
-  } catch (error) {
-    console.error('Error en acceptFriendRequest:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
-  } finally {
-    await session.close();
+  if ((requesterUser.friends || []).some((friendId) => friendId.toString() === targetUserId)) {
+    return res.success(null, 'Ya son amigos');
   }
-}
 
-async function listMyFriends(req, res) {
-  const session = driver.session();
+  await SocialRepository.sendFriendRequest(requesterId, req.user.username, targetUserId, targetUser.username);
 
-  try {
-    const userId = req.user.userId;
+  return res.success(null, 'Solicitud de amistad enviada');
+};
 
-    const result = await session.run(
-      `
-      MATCH (u:User {id: $userId})-[:FRIEND]->(f:User)
-      RETURN f.id AS userId, f.username AS username
-      `,
-      { userId }
-    );
+const acceptFriendRequest = async (req, res) => {
+  const currentUserId = req.user.userId;
+  const { userId: requesterId } = req.params;
 
-    const friends = result.records.map((record) => ({
-      userId: record.get('userId'),
-      username: record.get('username'),
+  const success = await SocialRepository.acceptFriendRequest(requesterId, currentUserId);
+
+  if (!success) {
+    return res.errorNotFound('Solicitud de amistad no encontrada');
+  }
+
+  return res.success(null, 'Solicitud aceptada correctamente');
+};
+
+const listMyFriends = async (req, res) => {
+  const userId = req.user.userId;
+  const currentUser = await User.findById(userId)
+    .populate('friends', 'username email fullName avatarUrl')
+    .lean();
+
+  if (!currentUser) return res.errorNotFound('Usuario no encontrado');
+
+  const friends = (currentUser.friends || []).map((friend) => ({
+    userId: friend._id.toString(),
+    username: friend.username,
+    email: friend.email,
+    fullName: friend.fullName,
+    avatarUrl: friend.avatarUrl || '',
+  }));
+
+  return res.success({ friends });
+};
+
+const getFriendCourses = async (req, res) => {
+  const currentUserId = req.user.userId;
+  const { id: friendId } = req.params;
+
+  const data = await SocialRepository.getFriendCourses(friendId, currentUserId);
+
+  if (!data) {
+    return res.error('No puedes ver los cursos de un usuario que no es tu amigo', 403);
+  }
+
+  return res.success({
+    teachingCourseIds: data.teachingIds,
+    enrolledCourseIds: data.enrolledIds,
+    courses: data.courses,
+  });
+};
+
+const getPendingRequests = async (req, res) => {
+  const userId = req.user.userId;
+  const currentUser = await User.findById(userId)
+    .populate('pendingFriendRequests.user', 'username email fullName avatarUrl')
+    .lean();
+
+  if (!currentUser) return res.errorNotFound('Usuario no encontrado');
+
+  const requests = (currentUser.pendingFriendRequests || [])
+    .filter((request) => request.user)
+    .map((request) => ({
+      userId: request.user._id.toString(),
+      username: request.user.username,
+      createdAt: request.createdAt || null,
+      user: {
+        _id: request.user._id.toString(),
+        username: request.user.username,
+        email: request.user.email,
+        fullName: request.user.fullName,
+        avatarUrl: request.user.avatarUrl || '',
+      },
     }));
 
-    return res.status(200).json({
-      ok: true,
-      friends,
-    });
-  } catch (error) {
-    console.error('Error en listMyFriends:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
-  } finally {
-    await session.close();
+  return res.success({ requests });
+};
+
+const rejectFriendRequest = async (req, res) => {
+  const currentUserId = req.user.userId;
+  const { userId: requesterId } = req.params;
+
+  const success = await SocialRepository.rejectFriendRequest(requesterId, currentUserId);
+
+  if (!success) return res.errorNotFound('Solicitud no encontrada');
+
+  return res.success(null, 'Solicitud rechazada');
+};
+
+const removeFriend = async (req, res) => {
+  const currentUserId = req.user.userId;
+  const { id: friendId } = req.params;
+
+  await SocialRepository.removeFriend(friendId, currentUserId);
+
+  return res.success(null, 'Amigo eliminado');
+};
+
+const searchUsers = async (req, res) => {
+  const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+
+  if (!req.user || !req.user.userId) {
+    return res.error('Usuario no identificado', 401);
   }
-}
 
-async function getFriendCourses(req, res) {
-  const session = driver.session();
+  const users = await SocialRepository.searchUsers(q, req.user.userId);
 
-  try {
-    const currentUserId = req.user.userId;
-    const { id: friendId } = req.params;
+  return res.success({ users });
+};
 
-    const friendshipCheck = await session.run(
-      `
-      MATCH (u1:User {id: $currentUserId})-[:FRIEND]->(u2:User {id: $friendId})
-      RETURN u2
-      `,
-      {
-        currentUserId,
-        friendId,
-      }
-    );
+const getStudentsByCourse = async (req, res) => {
+  const { courseId } = req.params;
+  const students = await SocialRepository.getStudentsByCourse(courseId);
 
-    if (friendshipCheck.records.length === 0) {
-      return res.status(403).json({
-        ok: false,
-        message: 'No puedes ver los cursos de un usuario que no es tu amigo',
-      });
-    }
-
-    const teachingResult = await session.run(
-      `
-      MATCH (u:User {id: $friendId})-[:TEACHES]->(c:Course)
-      RETURN c.id AS courseId
-      `,
-      { friendId }
-    );
-
-    const enrolledResult = await session.run(
-      `
-      MATCH (u:User {id: $friendId})-[:ENROLLED_IN]->(c:Course)
-      RETURN c.id AS courseId
-      `,
-      { friendId }
-    );
-
-    const teachingIds = teachingResult.records.map((r) => r.get('courseId'));
-    const enrolledIds = enrolledResult.records.map((r) => r.get('courseId'));
-
-    const allIds = [...new Set([...teachingIds, ...enrolledIds])];
-
-    const courses = await Course.find({
-      _id: { $in: allIds },
-    });
-
-    return res.status(200).json({
-      ok: true,
-      teachingCourseIds: teachingIds,
-      enrolledCourseIds: enrolledIds,
-      courses,
-    });
-  } catch (error) {
-    console.error('Error en getFriendCourses:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
-  } finally {
-    await session.close();
-  }
-}
-
-async function getPendingRequests(req, res) {
-  const session = driver.session();
-
-  try {
-    const userId = req.user.userId;
-    const result = await session.run(
-      `
-      MATCH (requester:User)-[r:REQUESTED_FRIEND]->(me:User {id: $userId})
-      RETURN requester.id AS requesterId, requester.username AS username, r.createdAt AS createdAt
-      `,
-      { userId }
-    );
-
-    const requests = result.records.map((record) => ({
-      userId: record.get('requesterId'),
-      username: record.get('username'),
-      createdAt: record.get('createdAt'),
-    }));
-
-    if (requests.length > 0) {
-      const ids = requests.map((request) => request.userId);
-      const users = await User.find(
-        { _id: { $in: ids } },
-        'username email fullName avatarUrl'
-      );
-
-      const hydratedRequests = requests.map((request) => {
-        const user = users.find((candidate) => candidate._id.toString() === request.userId);
-        return { ...request, user };
-      });
-
-      return res.status(200).json({ ok: true, requests: hydratedRequests });
-    }
-
-    return res.status(200).json({ ok: true, requests: [] });
-  } catch (error) {
-    console.error('Error en getPendingRequests:', error);
-    return res.status(500).json({ ok: false, message: 'Error interno' });
-  } finally {
-    await session.close();
-  }
-}
-
-async function rejectFriendRequest(req, res) {
-  const session = driver.session();
-
-  try {
-    const currentUserId = req.user.userId;
-    const { userId: requesterId } = req.params;
-
-    const result = await session.run(
-      `
-      MATCH (u1:User {id: $requesterId})-[r:REQUESTED_FRIEND]->(u2:User {id: $currentUserId})
-      DELETE r
-      RETURN u1
-      `,
-      { requesterId, currentUserId }
-    );
-
-    if (result.records.length === 0) {
-      return res.status(404).json({ ok: false, message: 'Solicitud no encontrada' });
-    }
-
-    return res.status(200).json({ ok: true, message: 'Solicitud rechazada' });
-  } catch (error) {
-    console.error('Error en rejectFriendRequest:', error);
-    return res.status(500).json({ ok: false, message: 'Error interno' });
-  } finally {
-    await session.close();
-  }
-}
-
-async function removeFriend(req, res) {
-  const session = driver.session();
-
-  try {
-    const currentUserId = req.user.userId;
-    const { id: friendId } = req.params;
-
-    await session.run(
-      `
-      MATCH (u1:User {id: $currentUserId})-[r1:FRIEND]->(u2:User {id: $friendId})
-      MATCH (u2)-[r2:FRIEND]->(u1)
-      DELETE r1, r2
-      `,
-      { currentUserId, friendId }
-    );
-
-    return res.status(200).json({ ok: true, message: 'Amigo eliminado' });
-  } catch (error) {
-    console.error('Error en removeFriend:', error);
-    return res.status(500).json({ ok: false, message: 'Error interno' });
-  } finally {
-    await session.close();
-  }
-}
-
-async function searchUsers(req, res) {
-  try {
-    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-    
-    if (!req.user || !req.user.userId) {
-      return res.status(401).json({ ok: false, message: 'Usuario no identificado' });
-    }
-
-    // Validar si el ID es un ObjectId válido para evitar errores de casteo (400)
-    const mongoose = require('mongoose');
-    const isValidId = mongoose.Types.ObjectId.isValid(req.user.userId);
-    
-    const baseFilter = isValidId ? { _id: { $ne: req.user.userId } } : {};
-    let users;
-
-    if (!q) {
-      users = await User.find(
-        baseFilter,
-        'username email fullName avatarUrl'
-      )
-        .sort({ lastLoginAt: -1, createdAt: -1 })
-        .limit(20);
-    } else {
-      const regex = new RegExp(escapeRegex(q), 'i');
-      const filter = {
-        ...baseFilter,
-        $or: [{ fullName: regex }, { email: regex }, { username: regex }],
-      };
-
-      users = await User.find(
-        filter,
-        'username email fullName avatarUrl'
-      ).limit(20);
-    }
-
-    return res.status(200).json({ ok: true, users });
-  } catch (error) {
-    console.error('Error detallado en searchUsers:', error);
-    return res.status(500).json({ ok: false, message: 'Error interno al buscar usuarios' });
-  }
-}
-
-async function getStudentsByCourse(req, res) {
-  const session = driver.session();
-
-  try {
-    const { courseId } = req.params;
-
-    const result = await session.run(
-      `
-      MATCH (u:User)-[:ENROLLED_IN]->(c:Course {id: $courseId})
-      RETURN u.id AS userId
-      `,
-      { courseId }
-    );
-
-    const studentIds = result.records.map((record) => record.get('userId'));
-
-    if (studentIds.length === 0) {
-      return res.status(200).json({ ok: true, students: [] });
-    }
-
-    const students = await User.find(
-      { _id: { $in: studentIds } },
-      'username email fullName avatarUrl'
-    );
-
-    return res.status(200).json({ ok: true, students });
-  } catch (error) {
-    console.error('Error en getStudentsByCourse:', error);
-    return res.status(500).json({ ok: false, message: 'Error interno' });
-  } finally {
-    await session.close();
-  }
-}
+  return res.success({ students });
+};
 
 module.exports = {
   sendFriendRequest,

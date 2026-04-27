@@ -24,403 +24,272 @@ function getResetPasswordKey(token) {
   return `reset-password:${token}`;
 }
 
-async function forgotPassword(req, res) {
-  try {
-    const { email, username } = req.body;
+const forgotPassword = async (req, res) => {
+  const { email, username } = req.body;
 
-    if (!email && !username) {
-      return res.status(400).json({
-        ok: false,
-        message: 'Debes enviar email o username',
-      });
-    }
-
-    const query = email
-      ? { email: email.toLowerCase() }
-      : { username };
-
-    const user = await User.findOne(query);
-
-    // Respuesta genérica por seguridad
-    if (!user) {
-      return res.status(200).json({
-        ok: true,
-        message: 'Si la cuenta existe, se generó un enlace de recuperación',
-      });
-    }
-
-    const token = crypto.randomBytes(32).toString('hex');
-    const ttl = Number(process.env.RESET_PASSWORD_TTL || 900);
-
-    await redisClient.set(
-      getResetPasswordKey(token),
-      JSON.stringify({
-        userId: user._id.toString(),
-        createdAt: new Date().toISOString(),
-      }),
-      { EX: ttl }
-    );
-
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-
-    return res.status(200).json({
-      ok: true,
-      message: 'Si la cuenta existe, se generó un enlace de recuperación',
-      // Esto es temporal para pruebas del proyecto
-      resetToken: token,
-      resetLink,
-      expiresInSeconds: ttl,
-    });
-  } catch (error) {
-    console.error('Error en forgotPassword:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
+  if (!email && !username) {
+    return res.error('Debes enviar email o username');
   }
-}
 
-async function resetPassword(req, res) {
-  try {
-    const { token, newPassword } = req.body;
+  const query = email ? { email: email.toLowerCase() } : { username };
+  const user = await User.findOne(query);
 
-    if (!token || !newPassword) {
-      return res.status(400).json({
-        ok: false,
-        message: 'token y newPassword son requeridos',
-      });
-    }
+  if (!user) {
+    return res.success(null, 'Si la cuenta existe, se generó un enlace de recuperación');
+  }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        ok: false,
-        message: 'La nueva contraseña debe tener al menos 6 caracteres',
-      });
-    }
+  const token = crypto.randomBytes(32).toString('hex');
+  const ttl = Number(process.env.RESET_PASSWORD_TTL || 900);
 
-    const tokenKey = getResetPasswordKey(token);
-    const tokenData = await redisClient.get(tokenKey);
+  await redisClient.set(
+    getResetPasswordKey(token),
+    JSON.stringify({
+      userId: user._id.toString(),
+      createdAt: new Date().toISOString(),
+    }),
+    { EX: ttl }
+  );
 
-    if (!tokenData) {
-      return res.status(400).json({
-        ok: false,
-        message: 'Token inválido o expirado',
-      });
-    }
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
-    const parsed = JSON.parse(tokenData);
-    const user = await User.findById(parsed.userId);
+  return res.success({
+    resetToken: token,
+    resetLink,
+    expiresInSeconds: ttl,
+  }, 'Si la cuenta existe, se generó un enlace de recuperación');
+};
 
-    if (!user) {
-      await redisClient.del(tokenKey);
-      return res.status(404).json({
-        ok: false,
-        message: 'Usuario no encontrado',
-      });
-    }
+const resetPassword = async (req, res) => {
+  const { token, newPassword } = req.body;
 
-    const newSalt = crypto.randomBytes(16).toString('hex');
-    const newPasswordHash = await bcrypt.hash(newPassword + newSalt, 10);
+  if (!token || !newPassword) {
+    return res.error('token y newPassword son requeridos');
+  }
 
-    user.salt = newSalt;
-    user.passwordHash = newPasswordHash;
+  if (newPassword.length < 6) {
+    return res.error('La nueva contraseña debe tener al menos 6 caracteres');
+  }
 
-    await user.save();
+  const tokenKey = getResetPasswordKey(token);
+  const tokenData = await redisClient.get(tokenKey);
 
-    // Invalida token de un solo uso
+  if (!tokenData) {
+    return res.error('Token inválido o expirado');
+  }
+
+  const parsed = JSON.parse(tokenData);
+  const user = await User.findById(parsed.userId);
+
+  if (!user) {
     await redisClient.del(tokenKey);
-
-    return res.status(200).json({
-      ok: true,
-      message: 'Contraseña restablecida correctamente',
-    });
-  } catch (error) {
-    console.error('Error en resetPassword:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
+    return res.errorNotFound('Usuario no encontrado');
   }
+
+  const newSalt = crypto.randomBytes(16).toString('hex');
+  const newPasswordHash = await bcrypt.hash(newPassword + newSalt, 10);
+
+  user.salt = newSalt;
+  user.passwordHash = newPasswordHash;
+  await user.save();
+
+  await redisClient.del(tokenKey);
+
+  return res.success(null, 'Contraseña restablecida correctamente');
+};
+
+const register = async (req, res) => {
+  const { username, email, password, fullName, birthDate, avatarUrl } = req.body;
+
+  if (!username || !email || !password || !fullName || !birthDate) {
+    return res.error('Todos los campos son requeridos');
+  }
+
+  if (password.length < 6) {
+    return res.error('La contraseña debe tener al menos 6 caracteres');
+  }
+
+  const existingUser = await User.findOne({
+    $or: [{ username }, { email: email.toLowerCase() }],
+  });
+
+  if (existingUser) {
+    return res.error('El username o correo ya existe', 409);
+  }
+
+  const salt = crypto.randomBytes(16).toString('hex');
+  const passwordHash = await bcrypt.hash(password + salt, 10);
+
+  const newUser = await User.create({
+    username,
+    email: email.toLowerCase(),
+    passwordHash,
+    salt,
+    fullName,
+    birthDate,
+    avatarUrl: avatarUrl || '',
+  });
+
+  const token = jwt.sign(
+    { userId: newUser._id.toString(), username: newUser.username },
+    process.env.JWT_SECRET,
+    { expiresIn: SESSION_TTL }
+  );
+
+  await redisClient.set(
+    getSessionKey(newUser._id.toString(), token),
+    JSON.stringify({
+      userId: newUser._id.toString(),
+      username: newUser.username,
+      createdAt: new Date().toISOString(),
+    }),
+    { EX: SESSION_TTL }
+  );
+
+  res.cookie('session_token', token, {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax',
+    maxAge: SESSION_TTL * 1000,
+  });
+
+  return res.success({
+    user: {
+      id: newUser._id,
+      username: newUser.username,
+      email: newUser.email,
+      fullName: newUser.fullName,
+      birthDate: newUser.birthDate,
+      avatarUrl: newUser.avatarUrl,
+    }
+  }, 'Usuario registrado correctamente e inicio de sesión automático', 201);
+};
+
+const login = async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.error('Username y password son requeridos');
+  }
+
+  const blockedKey = getBlockedKey(username);
+  const isBlocked = await redisClient.get(blockedKey);
+
+  if (isBlocked) {
+    return res.error('Credenciales inválidas', 401);
+  }
+
+  const user = await User.findOne({
+    $or: [{ username: username }, { email: username.toLowerCase() }],
+  });
+
+  if (!user) {
+    return await handleFailedLogin(username, res);
+  }
+
+  const isValidPassword = await bcrypt.compare(password + user.salt, user.passwordHash);
+
+  if (!isValidPassword) {
+    return await handleFailedLogin(username, res);
+  }
+
+  await redisClient.del(getFailedKey(username));
+  await redisClient.del(blockedKey);
+
+  user.lastLoginAt = new Date();
+  await user.save();
+
+  const token = jwt.sign(
+    { userId: user._id.toString(), username: user.username },
+    process.env.JWT_SECRET,
+    { expiresIn: SESSION_TTL }
+  );
+
+  await redisClient.set(
+    getSessionKey(user._id.toString(), token),
+    JSON.stringify({
+      userId: user._id.toString(),
+      username: user.username,
+      createdAt: new Date().toISOString(),
+    }),
+    { EX: SESSION_TTL }
+  );
+
+  res.cookie('session_token', token, {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax',
+    maxAge: SESSION_TTL * 1000,
+  });
+
+  return res.success({
+    user: {
+      id: user._id,
+      username: user.username,
+      fullName: user.fullName,
+    }
+  }, 'Login exitoso');
+};
+
+async function handleFailedLogin(username, res) {
+  const failedKey = getFailedKey(username);
+  const attempts = await redisClient.incr(failedKey);
+  await redisClient.expire(failedKey, LOGIN_ATTEMPTS_TTL);
+  if (attempts >= 5) {
+    await redisClient.set(getBlockedKey(username), 'true', { EX: BLOCK_TTL });
+  }
+  return res.error('Credenciales inválidas', 401);
 }
 
-async function register(req, res) {
-  try {
-    const { username, email, password, fullName, birthDate, avatarUrl } = req.body;
+const logout = async (req, res) => {
+  const token = req.cookies?.session_token;
 
-    if (!username || !email || !password || !fullName || !birthDate) {
-      return res.status(400).json({
-        ok: false,
-        message: 'username, email, password, fullName y birthDate son requeridos',
-      });
+  if (token) {
+    const decoded = jwt.decode(token);
+    if (decoded?.userId) {
+      await redisClient.del(getSessionKey(decoded.userId, token));
     }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        ok: false,
-        message: 'La contraseña debe tener al menos 6 caracteres',
-      });
-    }
-
-    const existingUser = await User.findOne({
-      $or: [{ username }, { email: email.toLowerCase() }],
-    });
-
-    if (existingUser) {
-      return res.status(409).json({
-        ok: false,
-        message: 'El username o correo ya existe',
-      });
-    }
-
-    const salt = crypto.randomBytes(16).toString('hex');
-    const passwordHash = await bcrypt.hash(password + salt, 10);
-
-    const newUser = await User.create({
-      username,
-      email: email.toLowerCase(),
-      passwordHash,
-      salt,
-      fullName,
-      birthDate,
-      avatarUrl: avatarUrl || '',
-    });
-
-    const token = jwt.sign(
-      {
-        userId: newUser._id.toString(),
-        username: newUser.username,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: SESSION_TTL }
-    );
-
-    await redisClient.set(
-      getSessionKey(newUser._id.toString(), token),
-      JSON.stringify({
-        userId: newUser._id.toString(),
-        username: newUser.username,
-        createdAt: new Date().toISOString(),
-      }),
-      { EX: SESSION_TTL }
-    );
-
-    res.cookie('session_token', token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: SESSION_TTL * 1000,
-    });
-
-    return res.status(201).json({
-      ok: true,
-      message: 'Usuario registrado correctamente e inicio de sesión automático',
-      user: {
-        id: newUser._id,
-        username: newUser.username,
-        email: newUser.email,
-        fullName: newUser.fullName,
-        birthDate: newUser.birthDate,
-        avatarUrl: newUser.avatarUrl,
-      },
-    });
-  } catch (error) {
-    console.error('Error en register:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
   }
-}
 
-async function login(req, res) {
-  try {
-    const { username, password } = req.body;
+  res.clearCookie('session_token');
+  return res.success(null, 'Sesión cerrada correctamente');
+};
 
-    if (!username || !password) {
-      return res.status(400).json({
-        ok: false,
-        message: 'Username y password son requeridos',
-      });
-    }
+const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
 
-    const blockedKey = getBlockedKey(username);
-    const isBlocked = await redisClient.get(blockedKey);
-
-    if (isBlocked) {
-      return res.status(401).json({
-        ok: false,
-        message: 'Credenciales inválidas',
-      });
-    }
-
-    const user = await User.findOne({
-      $or: [{ username: username }, { email: username.toLowerCase() }],
-    });
-
-    if (!user) {
-      const failedKey = getFailedKey(username);
-      const attempts = await redisClient.incr(failedKey);
-      await redisClient.expire(failedKey, LOGIN_ATTEMPTS_TTL);
-      if (attempts >= 5) {
-        await redisClient.set(blockedKey, 'true', { EX: BLOCK_TTL });
-      }
-      return res.status(401).json({
-        ok: false,
-        message: 'Credenciales inválidas',
-      });
-    }
-
-    const isValidPassword = await bcrypt.compare(password + user.salt, user.passwordHash);
-
-    if (!isValidPassword) {
-      const failedKey = getFailedKey(username);
-      const attempts = await redisClient.incr(failedKey);
-      await redisClient.expire(failedKey, LOGIN_ATTEMPTS_TTL);
-      if (attempts >= 5) {
-        await redisClient.set(blockedKey, 'true', { EX: BLOCK_TTL });
-      }
-      return res.status(401).json({
-        ok: false,
-        message: 'Credenciales inválidas',
-      });
-    }
-
-    await redisClient.del(getFailedKey(username));
-    await redisClient.del(blockedKey);
-
-    user.lastLoginAt = new Date();
-    await user.save();
-
-    const token = jwt.sign(
-      {
-        userId: user._id.toString(),
-        username: user.username,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: SESSION_TTL }
-    );
-
-    await redisClient.set(
-      getSessionKey(user._id.toString(), token),
-      JSON.stringify({
-        userId: user._id.toString(),
-        username: user.username,
-        createdAt: new Date().toISOString(),
-      }),
-      { EX: SESSION_TTL }
-    );
-
-    res.cookie('session_token', token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: SESSION_TTL * 1000,
-    });
-
-    return res.status(200).json({
-      ok: true,
-      message: 'Login exitoso',
-      user: {
-        id: user._id,
-        username: user.username,
-        fullName: user.fullName,
-      },
-    });
-  } catch (error) {
-    console.error('Error en login:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
+  if (!currentPassword || !newPassword) {
+    return res.error('currentPassword y newPassword son requeridos');
   }
-}
 
-async function logout(req, res) {
-  try {
-    const token = req.cookies?.session_token;
-
-    if (token) {
-      const decoded = jwt.decode(token);
-      if (decoded?.userId) {
-        await redisClient.del(getSessionKey(decoded.userId, token));
-      }
-    }
-
-    res.clearCookie('session_token');
-
-    return res.status(200).json({
-      ok: true,
-      message: 'Sesión cerrada correctamente',
-    });
-  } catch (error) {
-    console.error('Error en logout:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
+  if (newPassword.length < 6) {
+    return res.error('La nueva contraseña debe tener al menos 6 caracteres');
   }
-}
 
-async function changePassword(req, res) {
-  try {
-    const { currentPassword, newPassword } = req.body;
+  const userId = req.user.userId;
+  const user = await User.findById(userId);
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({
-        ok: false,
-        message: 'currentPassword y newPassword son requeridos',
-      });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        ok: false,
-        message: 'La nueva contraseña debe tener al menos 6 caracteres',
-      });
-    }
-
-    const userId = req.user.userId;
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({
-        ok: false,
-        message: 'Usuario no encontrado',
-      });
-    }
-
-    const isValidCurrentPassword = await bcrypt.compare(
-      currentPassword + user.salt,
-      user.passwordHash
-    );
-
-    if (!isValidCurrentPassword) {
-      return res.status(401).json({
-        ok: false,
-        message: 'La contraseña actual es incorrecta',
-      });
-    }
-
-    const newSalt = crypto.randomBytes(16).toString('hex');
-    const newPasswordHash = await bcrypt.hash(newPassword + newSalt, 10);
-
-    user.salt = newSalt;
-    user.passwordHash = newPasswordHash;
-
-    await user.save();
-
-    return res.status(200).json({
-      ok: true,
-      message: 'Contraseña actualizada correctamente',
-    });
-  } catch (error) {
-    console.error('Error en changePassword:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
+  if (!user) {
+    return res.errorNotFound('Usuario no encontrado');
   }
-}
+
+  const isValidCurrentPassword = await bcrypt.compare(
+    currentPassword + user.salt,
+    user.passwordHash
+  );
+
+  if (!isValidCurrentPassword) {
+    return res.error('La contraseña actual es incorrecta', 401);
+  }
+
+  const newSalt = crypto.randomBytes(16).toString('hex');
+  const newPasswordHash = await bcrypt.hash(newPassword + newSalt, 10);
+
+  user.salt = newSalt;
+  user.passwordHash = newPasswordHash;
+  await user.save();
+
+  return res.success(null, 'Contraseña actualizada correctamente');
+};
 
 module.exports = {
   register,

@@ -1,8 +1,17 @@
 const Course = require('../models/Course');
-const { driver } = require('../databases/neo4j');
-
 const Section = require('../models/Section');
 const SectionContent = require('../models/SectionContent');
+const { driver } = require('../databases/neo4j');
+const {
+  getEnrolledStudentIds,
+  getEnrolledStudentsForCourse,
+} = require('../services/courseEnrollmentService');
+const { getCourseAccess } = require('../services/courseAccessService');
+
+async function getEnrolledCourseIdsForUser(userId) {
+  const mongoCourses = await Course.find({ enrolledStudents: userId }, { _id: 1 }).lean();
+  return mongoCourses.map((course) => course._id.toString());
+}
 
 function buildSectionTreeWithContent(sections, contents, parentId = null) {
   return sections
@@ -34,81 +43,214 @@ function buildSectionTreeWithContent(sections, contents, parentId = null) {
     }));
 }
 
-async function getCourseContentTree(req, res) {
-  try {
-    const { id: courseId } = req.params;
+const getCourseContentTree = async (req, res) => {
+  const { id: courseId } = req.params;
 
-    const course = await Course.findById(courseId);
+  // ========== DEBUG: Step 1 - Raw MongoDB query ==========
+  const rawFromDb = await Course.collection.findOne({ _id: new (require('mongoose').Types.ObjectId)(courseId) });
+  console.log('=== DEBUG RAW FROM DB ===');
+  console.log(JSON.stringify(rawFromDb, null, 2));
+  console.log('=== END RAW ===');
 
-    if (!course) {
-      return res.status(404).json({
-        ok: false,
-        message: 'Curso no encontrado',
-      });
-    }
+  const course = await Course.findById(courseId).populate(
+    'teacherId',
+    'username email fullName avatarUrl'
+  );
 
-    const sections = await Section.find({ courseId });
-    const sectionIds = sections.map((section) => section._id);
-    const contents = await SectionContent.find({ sectionId: { $in: sectionIds } });
-
-    const tree = buildSectionTreeWithContent(sections, contents);
-
-    return res.status(200).json({
-      ok: true,
-      course: {
-        _id: course._id,
-        courseCode: course.courseCode,
-        courseName: course.courseName,
-        description: course.description,
-        startDate: course.startDate,
-        endDate: course.endDate,
-        imageUrl: course.imageUrl,
-        published: course.published,
-      },
-      sections: tree,
-    });
-  } catch (error) {
-    console.error('Error en getCourseContentTree:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
+  if (!course) {
+    return res.errorNotFound('Curso no encontrado');
   }
-}
-async function createCourse(req, res) {
-  const session = driver.session();
+
+  // ========== DEBUG: Step 2 - Mongoose document vs raw ==========
+  const mongooseObj = course.toObject();
+  const fieldChecks = {
+    courseName: { mongoose: course.courseName, raw: rawFromDb?.courseName, type: typeof course.courseName },
+    courseCode: { mongoose: course.courseCode, raw: rawFromDb?.courseCode, type: typeof course.courseCode },
+    description: { mongoose: course.description, raw: rawFromDb?.description, type: typeof course.description },
+    startDate: { mongoose: course.startDate, raw: rawFromDb?.startDate, type: typeof course.startDate },
+    endDate: { mongoose: course.endDate, raw: rawFromDb?.endDate, type: typeof course.endDate },
+    imageUrl: { mongoose: course.imageUrl, raw: rawFromDb?.imageUrl, type: typeof course.imageUrl },
+    published: { mongoose: course.published, raw: rawFromDb?.published, type: typeof course.published },
+    teacherId: { mongoose: String(course.teacherId?._id || course.teacherId), raw: String(rawFromDb?.teacherId), type: typeof course.teacherId },
+  };
+
+  const nullFields = [];
+  for (const [key, val] of Object.entries(fieldChecks)) {
+    if (val.mongoose == null || val.mongoose === '') {
+      nullFields.push(`${key} (mongoose=${val.mongoose}, raw=${val.raw})`);
+    }
+  }
+
+  console.log('=== DEBUG FIELD CHECKS ===');
+  console.log(JSON.stringify(fieldChecks, null, 2));
+  if (nullFields.length > 0) {
+    console.log('!!! CAMPOS NULL/VACIOS:', nullFields.join(', '));
+  } else {
+    console.log('>>> Todos los campos tienen datos');
+  }
+  console.log('=== END FIELD CHECKS ===');
+
+  const sections = await Section.find({ courseId });
+  const sectionIds = sections.map((section) => section._id);
+  const contents = await SectionContent.find({ sectionId: { $in: sectionIds } });
+  const tree = buildSectionTreeWithContent(sections, contents);
+
+  const enrolledStudents = await getEnrolledStudentsForCourse(course);
+  const permissions = req.user ? await getCourseAccess(course, req.user.userId) : null;
+
+  if (permissions && !permissions.canViewCourse) {
+    return res.error('No tienes acceso a este curso', 403);
+  }
+
+  // ========== DEBUG: Step 3 - Build response with _debug ==========
+  const responsePayload = {
+    course: {
+      _id: course._id,
+      courseCode: course.courseCode,
+      courseName: course.courseName,
+      description: course.description,
+      startDate: course.startDate,
+      endDate: course.endDate,
+      imageUrl: course.imageUrl,
+      published: course.published,
+      professor: course.teacherId
+        ? {
+          id: course.teacherId._id,
+          name: course.teacherId.fullName || course.teacherId.username,
+          email: course.teacherId.email,
+          avatarUrl: course.teacherId.avatarUrl,
+        }
+        : null,
+      permissions,
+      enrolledStudents: enrolledStudents.map((student) => ({
+        id: student.id,
+        userId: student.userId,
+        username: student.username,
+        fullName: student.fullName,
+        email: student.email,
+        avatarUrl: student.avatarUrl,
+      })),
+    },
+    sections: tree,
+    _debug: {
+      rawFromDb,
+      fieldChecks,
+      nullFields,
+      mongooseKeys: Object.keys(mongooseObj),
+      reqUser: req.user || null,
+    },
+  };
+
+  return res.success(responsePayload);
+};
+
+const syncContentTree = async (req, res) => {
+  const { id: courseId } = req.params;
+  const { tree } = req.body;
 
   try {
-    const { courseCode, courseName, description, startDate, endDate, imageUrl } = req.body;
-
-    if (!courseCode || !courseName || !description || !startDate) {
-      return res.status(400).json({
-        ok: false,
-        message: 'courseCode, courseName, description y startDate son requeridos',
-      });
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.errorNotFound('Curso no encontrado');
     }
 
-    const existingCourse = await Course.findOne({ courseCode });
-
-    if (existingCourse) {
-      return res.status(409).json({
-        ok: false,
-        message: 'Ya existe un curso con ese código',
-      });
+    if (course.teacherId.toString() !== req.user.userId) {
+      return res.error('No tienes permiso para modificar este curso', 403);
     }
 
-    const course = await Course.create({
-      courseCode,
-      courseName,
-      description,
-      startDate,
-      endDate: endDate || null,
-      imageUrl: imageUrl || '',
-      teacherId: req.user.userId,
-      published: false,
-    });
+    // Eliminate all existing sections and section contents for this course
+    const sections = await Section.find({ courseId });
+    const sectionIds = sections.map((s) => s._id);
+    await SectionContent.deleteMany({ sectionId: { $in: sectionIds } });
+    await Section.deleteMany({ courseId });
 
-    // Crear nodos y relación en Neo4j
+    // Helper function to recursively save the tree
+    let orderCounter = 0;
+    const saveNode = async (node, parentSectionId = null) => {
+      const section = await Section.create({
+        courseId,
+        parentSectionId,
+        title: node.title || 'Nueva Sección',
+        description: '',
+        order: orderCounter++,
+      });
+
+      if (node.children && node.children.length > 0) {
+        for (const child of node.children) {
+          await saveNode(child, section._id);
+        }
+      }
+
+      if (node.blocks && node.blocks.length > 0) {
+        let blockOrder = 0;
+        for (const block of node.blocks) {
+          let backendType = block.type;
+          if (backendType === 'file') backendType = 'document'; // Map frontend 'file' to backend 'document'
+          
+          let value = '';
+          let title = '';
+
+          if (block.type === 'text') {
+            value = block.content || ' '; // require value
+          } else if (block.type === 'file' || block.type === 'image') {
+            value = block.url || '#';
+            title = block.name || '';
+          }
+
+          if (!['text', 'video', 'image', 'document'].includes(backendType)) {
+            backendType = 'text'; // Fallback
+          }
+
+          await SectionContent.create({
+            sectionId: section._id,
+            type: backendType,
+            title,
+            value: value || ' ',
+            order: blockOrder++,
+          });
+        }
+      }
+    };
+
+    if (tree && Array.isArray(tree)) {
+      for (const node of tree) {
+        await saveNode(node);
+      }
+    }
+
+    return res.success({}, 'Árbol de contenido guardado correctamente');
+  } catch (error) {
+    console.error('Error en syncContentTree:', error);
+    return res.error('Error interno al guardar el contenido', 500);
+  }
+};
+
+const createCourse = async (req, res) => {
+  const { courseCode, courseName, description, startDate, endDate, imageUrl } = req.body;
+
+  if (!courseCode || !courseName || !description || !startDate) {
+    return res.error('courseCode, courseName, description y startDate son requeridos');
+  }
+
+  const normalizedCode = courseCode.trim();
+  const existingCourse = await Course.findOne({ courseCode: normalizedCode });
+  if (existingCourse) {
+    return res.error('Ya existe un curso con ese codigo', 409);
+  }
+
+  const course = await Course.create({
+    courseCode: normalizedCode,
+    courseName: courseName.trim(),
+    description: description.trim(),
+    startDate,
+    endDate: endDate || null,
+    imageUrl: imageUrl?.trim() || '',
+    teacherId: req.user.userId,
+    published: false,
+  });
+
+  const session = driver.session();
+  try {
     await session.run(
       `
       MERGE (u:User {id: $userId})
@@ -126,230 +268,146 @@ async function createCourse(req, res) {
         courseName: course.courseName,
       }
     );
-
-    return res.status(201).json({
-      ok: true,
-      message: 'Curso creado correctamente',
-      course,
-    });
-  } catch (error) {
-    console.error('Error en createCourse:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
   } finally {
     await session.close();
   }
-}
 
-async function getMyCreatedCourses(req, res) {
-  try {
-    const courses = await Course.find({ teacherId: req.user.userId }).sort({ createdAt: -1 });
+  return res.success({ course }, 'Curso creado correctamente', 201);
+};
 
-    return res.status(200).json({
-      ok: true,
-      courses,
-    });
-  } catch (error) {
-    console.error('Error en getMyCreatedCourses:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
+const getMyCreatedCourses = async (req, res) => {
+  const courses = await Course.find({ teacherId: req.user.userId }).sort({ createdAt: -1 });
+  return res.success({ courses });
+};
+
+const getCatalog = async (req, res) => {
+  const courses = await Course.find({ published: true }).sort({ createdAt: -1 });
+  return res.success({ courses });
+};
+
+const publishCourse = async (req, res) => {
+  const { id } = req.params;
+
+  const course = await Course.findOne({ _id: id, teacherId: req.user.userId });
+  if (!course) {
+    return res.errorNotFound('Curso no encontrado o no pertenece al usuario');
   }
-}
 
-async function getCatalog(req, res) {
-  try {
-    const courses = await Course.find({ published: true }).sort({ createdAt: -1 });
+  course.published = true;
+  await course.save();
 
-    return res.status(200).json({
-      ok: true,
-      courses,
-    });
-  } catch (error) {
-    console.error('Error en getCatalog:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
+  return res.success({ course }, 'Curso publicado correctamente');
+};
+
+const updateCourse = async (req, res) => {
+  const { id } = req.params;
+  const { courseCode, courseName, description, startDate, endDate, imageUrl } = req.body;
+
+  const course = await Course.findOne({ _id: id, teacherId: req.user.userId });
+  if (!course) {
+    return res.errorNotFound('Curso no encontrado o no pertenece al usuario');
   }
-}
 
-async function publishCourse(req, res) {
-  try {
-    const { id } = req.params;
-
-    const course = await Course.findOne({
-      _id: id,
-      teacherId: req.user.userId,
-    });
-
-    if (!course) {
-      return res.status(404).json({
-        ok: false,
-        message: 'Curso no encontrado o no pertenece al usuario',
-      });
-    }
-
-    course.published = true;
-    await course.save();
-
-    return res.status(200).json({
-      ok: true,
-      message: 'Curso publicado correctamente',
-      course,
-    });
-  } catch (error) {
-    console.error('Error en publishCourse:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
+  if (!courseCode || !courseName || !description || !startDate) {
+    return res.error('courseCode, courseName, description y startDate son requeridos');
   }
-}
 
-async function enrollInCourse(req, res) {
+  const normalizedCode = courseCode.trim();
+  const existingCourse = await Course.findOne({ _id: { $ne: id }, courseCode: normalizedCode });
+  if (existingCourse) {
+    return res.error('Ya existe un curso con ese codigo', 409);
+  }
+
+  course.courseCode = normalizedCode;
+  course.courseName = courseName.trim();
+  course.description = description.trim();
+  course.startDate = startDate;
+  course.endDate = endDate || null;
+  course.imageUrl = imageUrl?.trim() || '';
+  await course.save();
+
   const session = driver.session();
-
   try {
-    const { id } = req.params;
-
-    const course = await Course.findById(id);
-
-    if (!course) {
-      return res.status(404).json({
-        ok: false,
-        message: 'Curso no encontrado',
-      });
-    }
-
-    if (!course.published) {
-      return res.status(400).json({
-        ok: false,
-        message: 'El curso no está publicado',
-      });
-    }
-
-    if (course.teacherId && course.teacherId.toString() === req.user.userId) {
-      return res.status(400).json({
-        ok: false,
-        message: 'No puedes matricularte en tu propio curso',
-      });
-    }
-
     await session.run(
       `
-      MERGE (u:User {id: $userId})
-      ON CREATE SET u.username = $username
-      MERGE (c:Course {id: $courseId})
+      MATCH (c:Course {id: $courseId})
       SET c.courseCode = $courseCode,
           c.courseName = $courseName
-      MERGE (u)-[:ENROLLED_IN]->(c)
       `,
       {
-        userId: req.user.userId,
-        username: req.user.username,
         courseId: course._id.toString(),
         courseCode: course.courseCode,
         courseName: course.courseName,
       }
     );
-
-    return res.status(200).json({
-      ok: true,
-      message: 'Matrícula realizada correctamente',
-    });
-  } catch (error) {
-    console.error('Error en enrollInCourse:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
   } finally {
     await session.close();
   }
-}
 
-async function getMyEnrolledCourses(req, res) {
-  const session = driver.session();
+  return res.success({ course }, 'Curso actualizado correctamente');
+};
 
-  try {
-    const result = await session.run(
-      `
-      MATCH (u:User {id: $userId})-[:ENROLLED_IN]->(c:Course)
-      RETURN c.id AS courseId
-      `,
-      {
-        userId: req.user.userId,
-      }
-    );
+const enrollInCourse = async (req, res) => {
+  const { id } = req.params;
 
-    const courseIds = result.records.map((record) => record.get('courseId'));
-
-    const courses = await Course.find({
-      _id: { $in: courseIds },
-    });
-
-    return res.status(200).json({
-      ok: true,
-      courses,
-    });
-  } catch (error) {
-    console.error('Error en getMyEnrolledCourses:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
-  } finally {
-    await session.close();
+  const course = await Course.findById(id);
+  if (!course) {
+    return res.errorNotFound('Curso no encontrado');
   }
-}
 
-async function getStudentsByCourse(req, res) {
-  const session = driver.session();
-
-  try {
-    const { id } = req.params;
-
-    const result = await session.run(
-      `
-      MATCH (u:User)-[:ENROLLED_IN]->(c:Course {id: $courseId})
-      RETURN u.id AS userId, u.username AS username
-      `,
-      {
-        courseId: id,
-      }
-    );
-
-    const students = result.records.map((record) => ({
-      userId: record.get('userId'),
-      username: record.get('username'),
-    }));
-
-    return res.status(200).json({
-      ok: true,
-      students,
-    });
-  } catch (error) {
-    console.error('Error en getStudentsByCourse:', error);
-    return res.status(500).json({
-      ok: false,
-      message: 'Error interno del servidor',
-    });
-  } finally {
-    await session.close();
+  if (!course.published) {
+    return res.error('El curso no esta publicado');
   }
-}
+
+  if (course.teacherId && course.teacherId.toString() === req.user.userId) {
+    return res.error('No puedes matricularte en tu propio curso');
+  }
+
+  const existingStudentIds = await getEnrolledStudentIds(course._id, course.enrolledStudents);
+  if (existingStudentIds.includes(req.user.userId)) {
+    return res.error('Ya estas matriculado en este curso', 409);
+  }
+
+  course.enrolledStudents = course.enrolledStudents || [];
+  course.enrolledStudents.push(req.user.userId);
+  await course.save();
+
+  return res.success(
+    {
+      courseId: course._id.toString(),
+      enrolledStudentsCount: (course.enrolledStudents || []).length,
+    },
+    'Matricula realizada correctamente'
+  );
+};
+
+const getMyEnrolledCourses = async (req, res) => {
+  const courseIds = await getEnrolledCourseIdsForUser(req.user.userId);
+  const courses = await Course.find({ _id: { $in: courseIds } }).sort({ createdAt: -1 });
+  return res.success({ courses });
+};
+
+const getStudentsByCourse = async (req, res) => {
+  const { id: courseId } = req.params;
+
+  const course = await Course.findById(courseId);
+  if (!course) {
+    return res.errorNotFound('Curso no encontrado');
+  }
+
+  const students = await getEnrolledStudentsForCourse(course);
+  return res.success({ students });
+};
 
 module.exports = {
   createCourse,
   getMyCreatedCourses,
   getCatalog,
   publishCourse,
+  updateCourse,
   enrollInCourse,
   getMyEnrolledCourses,
   getStudentsByCourse,
   getCourseContentTree,
+  syncContentTree,
 };
