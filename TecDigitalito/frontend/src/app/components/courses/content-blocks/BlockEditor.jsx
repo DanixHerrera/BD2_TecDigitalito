@@ -26,13 +26,9 @@ export default function BlockEditor({ blocks = [], isEditable, onBlocksChange })
   };
 
   const handleAdd = (type) => {
-    const newBlock = { ...NEW_BLOCK[type], id: `blk-${Date.now()}` };
+    const newBlock = { ...NEW_BLOCK[type], id: `blk-${crypto.randomUUID()}` };
     onBlocksChange?.([...blocks, newBlock]);
     setMenuOpen(false);
-  };
-
-  const handleRemove = (index) => {
-    onBlocksChange?.(blocks.filter((_, i) => i !== index));
   };
 
   if (blocks.length === 0 && !isEditable) {

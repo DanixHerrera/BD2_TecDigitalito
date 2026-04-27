@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router';
-import { Info, BookOpen, ClipboardList, Users } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router';
 import CourseBanner from '../../components/courses/header/CourseBanner';
 import GeneralInfo from '../../components/courses/header/GeneralInfo';
 import ContentArea from '../../components/courses/sections/ContentArea';
@@ -8,6 +7,8 @@ import QuizBuilder from '../../components/courses/evaluations/QuizBuilder';
 import EvaluationList from '../../components/courses/evaluations/EvaluationList';
 import EnrolledTable from '../../components/courses/students/EnrolledTable';
 import { courseService } from '../../services/courseService';
+import { evaluationService } from '../../services/evaluationService';
+import { messageService } from '../../services/messageService';
 import '@/styles/CourseDetail.css';
 
 const TABS = [
@@ -19,37 +20,180 @@ const TABS = [
 
 export default function Course() {
   const { courseId } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
-  const role = location.state?.role || 'Docente';
-  const isEditable = role === 'Docente';
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('info');
   const [evaluations, setEvaluations] = useState([]);
+  const [myResults, setMyResults] = useState([]);
+  const [submittingEvaluationId, setSubmittingEvaluationId] = useState(null);
+
+  const normalizeCourse = (rawCourse, sections = []) => {
+    const courseName = rawCourse?.courseName || rawCourse?.name || '';
+    const courseCode = rawCourse?.courseCode || rawCourse?.code || '';
+    const imageUrl = rawCourse?.imageUrl || rawCourse?.bannerImageUrl || '';
+
+    return {
+      ...rawCourse,
+      courseName,
+      courseCode,
+      imageUrl,
+      bannerImageUrl: imageUrl,
+      startDate: rawCourse?.startDate ?? null,
+      endDate: rawCourse?.endDate ?? null,
+      name: courseName,
+      code: courseCode,
+      contentTree: sections,
+    };
+  };
+
+  const permissions = course?.permissions || {};
+  const isTeacher = Boolean(permissions.isTeacher);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const data = await courseService.getCourseById(courseId, token);
-      setCourse(data);
-      if (data) setEvaluations(data.evaluations || []);
+      try {
+        const [courseResponse, evaluationsResponse, resultsResponse] = await Promise.all([
+          courseService.getCourseById(courseId),
+          evaluationService.getByCourse(courseId),
+          evaluationService.getMyResults(courseId),
+        ]);
+
+        // ===== DEBUG: Show raw API response in browser =====
+        console.log('DEBUG courseResponse:', courseResponse);
+        
+        if (courseResponse) {
+          const debugMsg = [
+            '=== DEBUG: API Response ===',
+            `ok: ${courseResponse.ok}`,
+            `courseName: "${courseResponse.course?.courseName}"`,
+            `courseCode: "${courseResponse.course?.courseCode}"`,
+            `description: "${courseResponse.course?.description}"`,
+            `imageUrl: "${courseResponse.course?.imageUrl}"`,
+            `startDate: "${courseResponse.course?.startDate}"`,
+            `published: ${courseResponse.course?.published}`,
+            '',
+            '=== Null Fields from Backend ===',
+            JSON.stringify(courseResponse._debug?.nullFields || 'N/A'),
+            '',
+            '=== Raw DB Document ===',
+            JSON.stringify(courseResponse._debug?.rawFromDb || 'N/A', null, 2),
+          ].join('\n');
+          
+          alert(debugMsg);
+        } else {
+          alert('DEBUG: courseResponse is null/undefined! getCourseById returned nothing.');
+        }
+        // ===== END DEBUG =====
+
+        if (courseResponse?.ok) {
+          setCourse(normalizeCourse(courseResponse.course, courseResponse.sections || []));
+        } else {
+          setCourse(null);
+        }
+
+        if (evaluationsResponse?.ok) {
+          setEvaluations(evaluationsResponse.evaluations || []);
+        } else {
+          setEvaluations([]);
+        }
+
+        if (resultsResponse?.ok) {
+          setMyResults(resultsResponse.results || []);
+        } else {
+          setMyResults([]);
+        }
+      } catch (error) {
+        console.error('Error al cargar el curso:', error);
+        setCourse(null);
+        setEvaluations([]);
+        setMyResults([]);
+      }
+
       setLoading(false);
     };
+
     load();
   }, [courseId]);
 
-  const handleSaveQuiz = (quiz) => {
-    setEvaluations(prev => [...prev, quiz]);
+  const handleSaveCourse = async (formData) => {
+    const result = await courseService.updateCourse(courseId, formData);
+
+    if (result?.ok && result.course) {
+      setCourse((prev) => normalizeCourse({ ...prev, ...result.course }, prev?.contentTree || []));
+    }
+
+    return result;
   };
 
-  const handleContactProfessor = () => {
+  const handleSaveQuiz = async (payload) => {
+    const result = await evaluationService.create(courseId, payload);
+
+    if (result?.ok && result.evaluation) {
+      const refresh = await evaluationService.getByCourse(courseId);
+      if (refresh?.ok) {
+        setEvaluations(refresh.evaluations || []);
+      }
+    }
+
+    return result;
+  };
+
+  const handleSubmitEvaluation = async (evaluationId, answers) => {
+    setSubmittingEvaluationId(evaluationId);
+    const result = await evaluationService.submit(evaluationId, answers);
+
+    if (result?.ok) {
+      const refreshResults = await evaluationService.getMyResults(courseId);
+      if (refreshResults?.ok) {
+        setMyResults(refreshResults.results || []);
+      }
+    }
+
+    setSubmittingEvaluationId(null);
+    return result;
+  };
+
+  const handleContactProfessor = async () => {
     if (course && course.professor && course.professor.id) {
-      navigate('/social/user-messages', { state: { contactUserId: course.professor.id } });
+      try {
+        const userId = course.professor.id;
+        const conversation = await messageService.startConversationWithUser(userId);
+        const conversationId = conversation?.id || conversation?.['@metadata']?.['@id'];
+
+        if (!conversationId) {
+          console.error('No se pudo crear o recuperar la conversacion');
+          return;
+        }
+
+        const params = new URLSearchParams({ 
+          contactUserId: userId,
+          contactName: course.professor.name
+        });
+        params.set('conversationId', conversationId);
+
+        navigate(`/social/user-messages?${params.toString()}`, {
+          state: { contactUserId: userId, conversationId, contactName: course.professor.name },
+        });
+      } catch (error) {
+        console.error('Error abriendo chat con profesor:', error);
+      }
     } else {
       console.warn("No se puede contactar al docente: ID no disponible.");
+    }
+  };
+
+  const handleSaveContent = async (tree) => {
+    const result = await courseService.saveContentTree(courseId, tree);
+    if (result?.ok) {
+      const refresh = await courseService.getCourseById(courseId);
+      if (refresh?.ok) {
+        setCourse(normalizeCourse(refresh.course, refresh.sections || []));
+      }
+    } else {
+      console.error("Hubo un error guardando el contenido: ", result?.message);
     }
   };
 
@@ -86,19 +230,30 @@ export default function Course() {
         {activeTab === 'info' && (
           <GeneralInfo 
             course={course} 
-            isStudent={!isEditable} 
+            isStudent={!isTeacher} 
             onContactProfessor={handleContactProfessor} 
+            onSave={handleSaveCourse}
           />
         )}
 
         {activeTab === 'content' && (
-          <ContentArea contentTree={course.contentTree} isEditable={isEditable} />
+          <ContentArea 
+            contentTree={course.contentTree} 
+            isEditable={Boolean(permissions.canManageContent)} 
+            onSaveContent={handleSaveContent}
+          />
         )}
 
         {activeTab === 'evaluations' && (
           <div className="evaluations-wrapper">
-            {isEditable && <QuizBuilder onSave={handleSaveQuiz} />}
-            <EvaluationList evaluations={evaluations} />
+            {Boolean(permissions.canCreateEvaluations) && <QuizBuilder onSave={handleSaveQuiz} />}
+            <EvaluationList
+              evaluations={evaluations}
+              isTeacher={isTeacher}
+              results={myResults}
+              onSubmit={handleSubmitEvaluation}
+              submittingId={submittingEvaluationId}
+            />
           </div>
         )}
 

@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Search, Users } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 function getInitials(name) {
-  return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  const safeName = (name || '').trim();
+  if (!safeName) return '??';
+  return safeName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
 function gradeClass(grade) {
@@ -15,10 +17,13 @@ function gradeClass(grade) {
 export default function EnrolledTable({ students = [] }) {
   const [search, setSearch] = useState('');
 
-  const filtered = students.filter(s =>
-    s.fullName.toLowerCase().includes(search.toLowerCase()) ||
-    s.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = students.filter((student) => {
+    const fullName = (student.fullName || student.username || '').toLowerCase();
+    const email = (student.email || '').toLowerCase();
+    const query = search.toLowerCase();
+
+    return fullName.includes(query) || email.includes(query);
+  });
 
   return (
     <div className="students-wrapper">
@@ -56,12 +61,12 @@ export default function EnrolledTable({ students = [] }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(s => (
-              <tr key={s.id}>
+            {filtered.map((s) => (
+              <tr key={s.id || s.userId}>
                 <td>
                   <div className="student-name-cell">
-                    <span className="student-avatar">{getInitials(s.fullName)}</span>
-                    {s.fullName}
+                    <span className="student-avatar">{getInitials(s.fullName || s.username)}</span>
+                    {s.fullName || s.username}
                   </div>
                 </td>
                 <td><span className="student-email">{s.email}</span></td>

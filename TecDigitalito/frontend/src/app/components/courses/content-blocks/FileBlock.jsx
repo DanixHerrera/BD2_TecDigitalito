@@ -1,6 +1,6 @@
 import { FileText, Download } from 'lucide-react';
 
-export default function FileBlock({ block, isEditable }) {
+export default function FileBlock({ block }) {
   return (
     <div className="content-block">
       <div className="block-body">

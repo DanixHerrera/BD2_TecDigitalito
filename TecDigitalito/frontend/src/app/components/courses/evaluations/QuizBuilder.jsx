@@ -1,120 +1,187 @@
 import { useState } from 'react';
-import { Plus, Trash2, ClipboardList } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
-const emptyQuestion = () => ({
-  id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-  prompt: '',
-  options: ['', '', '', ''],
-  correctOption: 0,
+const createEmptyQuestion = () => ({
+  id: `q-${crypto.randomUUID()}`,
+  text: '',
+  options: ['', ''],
+  correctOptionIndex: 0,
 });
 
 export default function QuizBuilder({ onSave }) {
   const [title, setTitle] = useState('');
-  const [startAt, setStartAt] = useState('');
-  const [endAt, setEndAt] = useState('');
-  const [questions, setQuestions] = useState([emptyQuestion()]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [questions, setQuestions] = useState(() => [createEmptyQuestion()]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const updateQuestion = (idx, field, value) => {
-    const next = [...questions];
-    next[idx] = { ...next[idx], [field]: value };
-    setQuestions(next);
+  const updateQuestion = (index, patch) => {
+    setQuestions((prev) => prev.map((question, currentIndex) => (
+      currentIndex === index ? { ...question, ...patch } : question
+    )));
   };
 
-  const updateOption = (qIdx, oIdx, value) => {
-    const next = [...questions];
-    const opts = [...next[qIdx].options];
-    opts[oIdx] = value;
-    next[qIdx] = { ...next[qIdx], options: opts };
-    setQuestions(next);
+  const updateOption = (questionIndex, optionIndex, value) => {
+    setQuestions((prev) => prev.map((question, currentIndex) => {
+      if (currentIndex !== questionIndex) return question;
+
+      const nextOptions = question.options.map((option, currentOptionIndex) => (
+        currentOptionIndex === optionIndex ? value : option
+      ));
+
+      return { ...question, options: nextOptions };
+    }));
   };
 
-  const addQuestion = () => setQuestions([...questions, emptyQuestion()]);
-
-  const removeQuestion = (idx) => {
-    if (questions.length <= 1) return;
-    setQuestions(questions.filter((_, i) => i !== idx));
+  const addQuestion = () => {
+    setQuestions((prev) => [...prev, createEmptyQuestion()]);
   };
 
-  const addOption = (qIdx) => {
-    const next = [...questions];
-    next[qIdx] = { ...next[qIdx], options: [...next[qIdx].options, ''] };
-    setQuestions(next);
+  const removeQuestion = (index) => {
+    setQuestions((prev) => prev.length === 1 ? prev : prev.filter((_, currentIndex) => currentIndex !== index));
   };
 
-  const handleSubmit = () => {
-    if (!title.trim() || !startAt || !endAt) return;
-    const quiz = {
-      id: `qz-${Date.now()}`,
-      title, startAt, endAt,
-      status: 'scheduled',
-      questions,
+  const addOption = (questionIndex) => {
+    setQuestions((prev) => prev.map((question, currentIndex) => (
+      currentIndex === questionIndex
+        ? { ...question, options: [...question.options, ''] }
+        : question
+    )));
+  };
+
+  const handleSubmit = async () => {
+    setError('');
+
+    const payload = {
+      title: title.trim(),
+      startDate,
+      endDate,
+      questions: questions.map((question) => ({
+        text: question.text.trim(),
+        options: question.options
+          .map((option) => option.trim())
+          .filter(Boolean)
+          .map((text) => ({ text })),
+        correctOptionIndex: question.correctOptionIndex,
+      })),
     };
-    onSave?.(quiz);
+
+    const hasInvalidQuestion = payload.questions.some((question) => (
+      !question.text || question.options.length < 2 || question.correctOptionIndex >= question.options.length
+    ));
+
+    if (!payload.title || !payload.startDate || !payload.endDate || hasInvalidQuestion) {
+      setError('Completa el título, fechas y al menos dos opciones válidas por pregunta.');
+      return;
+    }
+
+    setSaving(true);
+    const result = await onSave(payload);
+    setSaving(false);
+
+    if (!result?.ok) {
+      setError(result?.message || 'No se pudo crear la evaluación');
+      return;
+    }
+
     setTitle('');
-    setStartAt('');
-    setEndAt('');
-    setQuestions([emptyQuestion()]);
+    setStartDate('');
+    setEndDate('');
+    setQuestions([createEmptyQuestion()]);
   };
 
   return (
     <div className="quiz-builder-card">
       <h3 className="quiz-builder-title">Crear Nueva Evaluación</h3>
+      {error && <div className="error-message" style={{ marginBottom: '1rem' }}>{error}</div>}
 
       <div className="quiz-form-row three">
         <div className="quiz-input-group">
           <label className="quiz-label">Nombre de la evaluación</label>
-          <input className="quiz-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Quiz 1 - Fundamentos" />
+          <input
+            className="quiz-input"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Ej: Quiz 1 - Fundamentos"
+          />
         </div>
         <div className="quiz-input-group">
           <label className="quiz-label">Fecha inicio</label>
-          <input className="quiz-input" type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
+          <input
+            className="quiz-input"
+            type="datetime-local"
+            value={startDate}
+            onChange={(event) => setStartDate(event.target.value)}
+          />
         </div>
         <div className="quiz-input-group">
           <label className="quiz-label">Fecha fin</label>
-          <input className="quiz-input" type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
+          <input
+            className="quiz-input"
+            type="datetime-local"
+            value={endDate}
+            onChange={(event) => setEndDate(event.target.value)}
+          />
         </div>
       </div>
 
-      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem', marginTop: '0.5rem' }}>Preguntas</h4>
+      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem', marginTop: '0.5rem' }}>
+        Preguntas
+      </h4>
 
-      {questions.map((q, qi) => (
-        <div key={q.id} className="quiz-question-card">
+      {questions.map((question, questionIndex) => (
+        <div key={question.id} className="quiz-question-card">
           <div className="quiz-question-header">
-            <span className="quiz-question-number">Pregunta {qi + 1}</span>
+            <span className="quiz-question-number">Pregunta {questionIndex + 1}</span>
             {questions.length > 1 && (
-              <button className="tree-action-btn destructive" onClick={() => removeQuestion(qi)}>
+              <button className="tree-action-btn destructive" type="button" onClick={() => removeQuestion(questionIndex)}>
                 <Trash2 size={14} />
               </button>
             )}
           </div>
+
           <div className="quiz-input-group" style={{ marginBottom: '0.75rem' }}>
-            <input className="quiz-input" value={q.prompt} onChange={(e) => updateQuestion(qi, 'prompt', e.target.value)} placeholder="Escribe la pregunta..." style={{ width: '100%' }} />
+            <input
+              className="quiz-input"
+              value={question.text}
+              onChange={(event) => updateQuestion(questionIndex, { text: event.target.value })}
+              placeholder="Escribe la pregunta..."
+              style={{ width: '100%' }}
+            />
           </div>
-          {q.options.map((opt, oi) => (
-            <div key={oi} className="quiz-option-row">
+
+          {question.options.map((option, optionIndex) => (
+            <div key={`${question.id}-${optionIndex}`} className="quiz-option-row">
               <input
                 type="radio"
-                name={`correct-${q.id}`}
+                name={`correct-${question.id}`}
                 className="quiz-option-radio"
-                checked={q.correctOption === oi}
-                onChange={() => updateQuestion(qi, 'correctOption', oi)}
+                checked={question.correctOptionIndex === optionIndex}
+                onChange={() => updateQuestion(questionIndex, { correctOptionIndex: optionIndex })}
                 title="Marcar como correcta"
               />
-              <input className="quiz-option-input" value={opt} onChange={(e) => updateOption(qi, oi, e.target.value)} placeholder={`Opción ${oi + 1}`} />
+              <input
+                className="quiz-option-input"
+                value={option}
+                onChange={(event) => updateOption(questionIndex, optionIndex, event.target.value)}
+                placeholder={`Opción ${optionIndex + 1}`}
+              />
             </div>
           ))}
-          <button className="quiz-btn-secondary" style={{ marginTop: '0.5rem' }} onClick={() => addOption(qi)}>
+
+          <button className="quiz-btn-secondary" type="button" style={{ marginTop: '0.5rem' }} onClick={() => addOption(questionIndex)}>
             <Plus size={12} /> Opción
           </button>
         </div>
       ))}
 
       <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-        <button className="quiz-btn-secondary" onClick={addQuestion}>
+        <button className="quiz-btn-secondary" type="button" onClick={addQuestion}>
           <Plus size={14} /> Agregar Pregunta
         </button>
-        <button className="quiz-btn-primary" onClick={handleSubmit}>
-          Guardar Evaluación
+        <button className="quiz-btn-primary" type="button" onClick={handleSubmit} disabled={saving}>
+          {saving ? 'Guardando...' : 'Guardar Evaluación'}
         </button>
       </div>
     </div>
