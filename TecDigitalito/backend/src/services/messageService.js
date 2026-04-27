@@ -1,14 +1,32 @@
 const { getStore } = require('../databases/raven');
+const User = require('../models/User');
+
+function serializeConversation(conv) {
+  if (!conv) {
+    return null;
+  }
+
+  return {
+    id: conv.id || conv['@metadata']?.['@id'] || null,
+    participants: Array.isArray(conv.participants) ? conv.participants : [],
+    messages: Array.isArray(conv.messages) ? conv.messages : [],
+    createdAt: conv.createdAt || null,
+    updatedAt: conv.updatedAt || null,
+  };
+}
 
 async function createConversationIfNotExists(participants) {
   const store = getStore();
   const session = store.openSession();
 
   try {
-    const normalizedParticipants = [...participants].sort();
+    const normalizedParticipants = [...participants]
+      .map((participantId) => participantId.toString())
+      .sort();
 
     const conversations = await session
       .query({ collection: 'Conversations' })
+      .waitForNonStaleResults(5000)
       .all();
 
     const existing = conversations.find((conv) => {
@@ -24,6 +42,9 @@ async function createConversationIfNotExists(participants) {
     }
 
     const conversation = {
+      '@metadata': {
+        '@collection': 'Conversations'
+      },
       participants: normalizedParticipants,
       messages: [],
       createdAt: new Date().toISOString(),
@@ -82,16 +103,42 @@ async function getMyConversations(userId) {
   const session = store.openSession();
 
   try {
+    const normalizedUserId = userId.toString();
     const conversations = await session
       .query({ collection: 'Conversations' })
+      .waitForNonStaleResults(5000)
       .all();
 
-    return conversations.filter((conv) =>
-      Array.isArray(conv.participants) && conv.participants.includes(userId)
+    const myConversations = conversations.filter((conv) =>
+      Array.isArray(conv.participants) && conv.participants.map((participantId) => participantId.toString()).includes(normalizedUserId)
     );
+
+    return await enrichConversationsWithParticipantNames(myConversations);
   } finally {
     session.dispose();
   }
+}
+
+async function enrichConversationsWithParticipantNames(conversations) {
+  const participantIds = [...new Set((conversations || []).flatMap((conv) => conv.participants || []))];
+  const users = participantIds.length > 0
+    ? await User.find({ _id: { $in: participantIds } }, 'username fullName')
+    : [];
+
+  const nameMap = {};
+  users.forEach((user) => {
+    nameMap[user._id.toString()] = user.fullName || user.username;
+  });
+
+  return (conversations || []).map((conv) => ({
+    ...serializeConversation(conv),
+    participantNames: Object.fromEntries(
+      (conv.participants || []).map((participantId) => [
+        participantId,
+        nameMap[participantId] || 'Usuario',
+      ])
+    ),
+  }));
 }
 
 module.exports = {
@@ -99,4 +146,5 @@ module.exports = {
   getConversationById,
   addMessageToConversation,
   getMyConversations,
+  enrichConversationsWithParticipantNames,
 };
