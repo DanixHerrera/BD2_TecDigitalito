@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useFriends } from '../../hooks/useFriends';
-import { useConversation } from '../../hooks/useConversation';
 import { socialService } from '../../services/socialService';
+import { messageService } from '../../services/messageService';
 import '@/styles/Social.css';
 
 export default function Friends() {
   const [activeTab, setActiveTab] = useState('amigos');
   const { friends, requests, loading, acceptRequest, rejectRequest, removeFriend, sendRequest } = useFriends();
-  const { startConversation } = useConversation();
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [sentRequests, setSentRequests] = useState([]);
 
   // Buscar automaticamente al entrar a la pestaña o al escribir
   useEffect(() => {
@@ -40,8 +40,40 @@ export default function Friends() {
   };
 
   const handleMessage = async (userId) => {
-    await startConversation(userId);
-    navigate('/social/user-messages');
+    try {
+      const conversation = await messageService.startConversationWithUser(userId);
+      const conversationId = conversation?.id || conversation?.['@metadata']?.['@id'];
+
+      if (!conversationId) {
+        console.error('No se pudo crear o recuperar la conversacion');
+        return;
+      }
+
+      const friendName = friends.find(f => f.userId === userId)?.fullName || 
+                         friends.find(f => f.userId === userId)?.username || '';
+                         
+      const params = new URLSearchParams({ 
+        contactUserId: userId,
+        contactName: friendName
+      });
+
+      params.set('conversationId', conversationId);
+
+      navigate(`/social/user-messages?${params.toString()}`, {
+        state: { contactUserId: userId, conversationId, contactName: friendName },
+      });
+    } catch (error) {
+      console.error('Error abriendo chat desde amigos', error);
+    }
+  };
+
+  const handleSendRequest = async (userId) => {
+    try {
+      await sendRequest(userId);
+      setSentRequests(prev => (prev.includes(userId) ? prev : [...prev, userId]));
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const tabs = [
@@ -164,8 +196,10 @@ export default function Friends() {
             <div className="friends-grid">
               {searchResults.map(user => {
                 const isFriend = friends.some(f => f.userId === user._id || f.userId === user.userId);
+                const userId = user._id || user.userId;
+                const requestSent = sentRequests.includes(userId);
                 return (
-                  <div key={user._id || user.userId} className="card card-horizontal">
+                  <div key={userId} className="card card-horizontal">
                     <div className="avatar avatar-md">
                       {user.fullName ? user.fullName.substring(0, 2).toUpperCase() : user.username.substring(0, 2).toUpperCase()}
                     </div>
@@ -176,8 +210,10 @@ export default function Friends() {
                     <div className="friend-actions">
                       {isFriend ? (
                         <button className="btn btn-outline" disabled style={{ opacity: 0.6 }}>Siguiendo</button>
+                      ) : requestSent ? (
+                        <button className="btn btn-outline" disabled style={{ opacity: 0.6 }}>Solicitud enviada</button>
                       ) : (
-                        <button className="btn btn-primary" onClick={() => sendRequest(user._id || user.userId)}>
+                        <button className="btn btn-primary" onClick={() => handleSendRequest(userId)}>
                           Seguir
                         </button>
                       )}

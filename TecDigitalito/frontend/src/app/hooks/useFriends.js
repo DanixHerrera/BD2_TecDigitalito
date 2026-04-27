@@ -50,10 +50,14 @@ export function useFriends() {
 
   const sendRequest = async (userId) => {
     try {
-      await socialService.sendRequest(userId);
-      // Opcional: mostrar notificación
+      const response = await socialService.sendRequest(userId);
+      if (!response?.ok) {
+        throw new Error(response?.message || 'No se pudo enviar la solicitud');
+      }
+      return response;
     } catch (error) {
       console.error(error);
+      throw error;
     }
   };
 

@@ -5,11 +5,11 @@ import '@/styles/Social.css';
 
 export default function UserMessages() {
   const location = useLocation();
-  const { conversations, messages, selected, setSelected, sendMessage, startConversation, loading, currentUserId } = useConversation();
+  const { conversations, messages, selected, currentConversation, setSelected, sendMessage, startConversation, loading, currentUserId } = useConversation();
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
+  const openedContactRef = useRef(null);
 
-  // Para responsive
   const [isMobileListVisible, setIsMobileListVisible] = useState(true);
 
   const scrollToBottom = () => {
@@ -20,14 +20,33 @@ export default function UserMessages() {
     scrollToBottom();
   }, [messages]);
 
-  // Si venimos de un curso con un contactUserId, iniciar la conversacion con él
+  const contactUserId =
+    location.state?.contactUserId ||
+    new URLSearchParams(location.search).get('contactUserId');
+  const conversationId =
+    location.state?.conversationId ||
+    new URLSearchParams(location.search).get('conversationId');
+  const passedContactName =
+    location.state?.contactName ||
+    new URLSearchParams(location.search).get('contactName');
+
   useEffect(() => {
-    if (!loading && location.state?.contactUserId) {
-      startConversation(location.state.contactUserId);
-      // Limpiamos el state para que no se re-dispare si el usuario navega
-      window.history.replaceState({}, document.title);
+    if (loading) {
+      return;
     }
-  }, [loading, location.state, startConversation]);
+
+    if (conversationId) {
+      setSelected(conversationId);
+      setIsMobileListVisible(false);
+      return;
+    }
+
+    if (contactUserId && openedContactRef.current !== contactUserId) {
+      openedContactRef.current = contactUserId;
+      startConversation(contactUserId);
+      setIsMobileListVisible(false);
+    }
+  }, [loading, conversationId, contactUserId, startConversation, setSelected]);
 
   const handleSend = (e) => {
     e.preventDefault();
@@ -44,11 +63,10 @@ export default function UserMessages() {
 
   if (loading) return <div className="social-page-container">Cargando...</div>;
 
-  const currentConv = conversations.find(c => c.id === selected || c['@metadata']?.['@id'] === selected);
-  const otherParticipantId = currentConv ? currentConv.participants.find(p => p !== currentUserId) : null;
-  const otherParticipantName = currentConv && currentConv.participantNames && otherParticipantId
-    ? currentConv.participantNames[otherParticipantId]
-    : 'Contacto';
+  const currentConv = currentConversation || conversations.find((conversation) => conversation.id === selected || conversation['@metadata']?.['@id'] === selected);
+  const participants = Array.isArray(currentConv?.participants) ? currentConv.participants : [];
+  const otherParticipantId = participants.find((participantId) => participantId !== currentUserId) || contactUserId || null;
+  const otherParticipantName = currentConv?.participantNames?.[otherParticipantId] || passedContactName || 'Contacto';
   const otherParticipantInitials = otherParticipantName.substring(0, 2).toUpperCase();
 
   return (
@@ -58,8 +76,6 @@ export default function UserMessages() {
       </header>
 
       <div className="messages-layout">
-
-        {/* Panel izquierdo: Lista */}
         <div className={`conversation-list ${!isMobileListVisible ? 'hidden-mobile' : ''}`}>
           <div className="conversation-header">
             <h2 className="conversation-title">Mensajes Directos</h2>
@@ -69,9 +85,9 @@ export default function UserMessages() {
           </div>
 
           <div className="conversation-items">
-            {conversations.map(conv => {
+            {conversations.map((conv) => {
               const convId = conv.id || conv['@metadata']?.['@id'];
-              const otherId = conv.participants.find(p => p !== currentUserId);
+              const otherId = (conv.participants || []).find((participantId) => participantId !== currentUserId);
               const name = conv.participantNames?.[otherId] || 'Usuario';
               const lastMsg = conv.messages && conv.messages.length > 0 ? conv.messages[conv.messages.length - 1] : null;
               const preview = lastMsg ? lastMsg.text : '...';
@@ -100,7 +116,6 @@ export default function UserMessages() {
           </div>
         </div>
 
-        {/* Panel derecho: Chat */}
         <div className={`chat-area ${!isMobileListVisible ? 'active-mobile' : ''}`}>
           {selected ? (
             <>
@@ -136,7 +151,7 @@ export default function UserMessages() {
                   className="chat-input"
                   placeholder="Escribe un mensaje..."
                   value={inputText}
-                  onChange={e => setInputText(e.target.value)}
+                  onChange={(e) => setInputText(e.target.value)}
                 />
                 <button type="submit" className="chat-send-btn" disabled={!inputText.trim()}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -152,7 +167,6 @@ export default function UserMessages() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );
