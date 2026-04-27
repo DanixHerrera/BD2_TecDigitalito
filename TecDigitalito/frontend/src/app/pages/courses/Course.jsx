@@ -61,33 +61,6 @@ export default function Course() {
           evaluationService.getMyResults(courseId),
         ]);
 
-        // ===== DEBUG: Show raw API response in browser =====
-        console.log('DEBUG courseResponse:', courseResponse);
-        
-        if (courseResponse) {
-          const debugMsg = [
-            '=== DEBUG: API Response ===',
-            `ok: ${courseResponse.ok}`,
-            `courseName: "${courseResponse.course?.courseName}"`,
-            `courseCode: "${courseResponse.course?.courseCode}"`,
-            `description: "${courseResponse.course?.description}"`,
-            `imageUrl: "${courseResponse.course?.imageUrl}"`,
-            `startDate: "${courseResponse.course?.startDate}"`,
-            `published: ${courseResponse.course?.published}`,
-            '',
-            '=== Null Fields from Backend ===',
-            JSON.stringify(courseResponse._debug?.nullFields || 'N/A'),
-            '',
-            '=== Raw DB Document ===',
-            JSON.stringify(courseResponse._debug?.rawFromDb || 'N/A', null, 2),
-          ].join('\n');
-          
-          alert(debugMsg);
-        } else {
-          alert('DEBUG: courseResponse is null/undefined! getCourseById returned nothing.');
-        }
-        // ===== END DEBUG =====
-
         if (courseResponse?.ok) {
           setCourse(normalizeCourse(courseResponse.course, courseResponse.sections || []));
         } else {
