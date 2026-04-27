@@ -46,12 +46,6 @@ function buildSectionTreeWithContent(sections, contents, parentId = null) {
 const getCourseContentTree = async (req, res) => {
   const { id: courseId } = req.params;
 
-  // ========== DEBUG: Step 1 - Raw MongoDB query ==========
-  const rawFromDb = await Course.collection.findOne({ _id: new (require('mongoose').Types.ObjectId)(courseId) });
-  console.log('=== DEBUG RAW FROM DB ===');
-  console.log(JSON.stringify(rawFromDb, null, 2));
-  console.log('=== END RAW ===');
-
   const course = await Course.findById(courseId).populate(
     'teacherId',
     'username email fullName avatarUrl'
@@ -60,35 +54,6 @@ const getCourseContentTree = async (req, res) => {
   if (!course) {
     return res.errorNotFound('Curso no encontrado');
   }
-
-  // ========== DEBUG: Step 2 - Mongoose document vs raw ==========
-  const mongooseObj = course.toObject();
-  const fieldChecks = {
-    courseName: { mongoose: course.courseName, raw: rawFromDb?.courseName, type: typeof course.courseName },
-    courseCode: { mongoose: course.courseCode, raw: rawFromDb?.courseCode, type: typeof course.courseCode },
-    description: { mongoose: course.description, raw: rawFromDb?.description, type: typeof course.description },
-    startDate: { mongoose: course.startDate, raw: rawFromDb?.startDate, type: typeof course.startDate },
-    endDate: { mongoose: course.endDate, raw: rawFromDb?.endDate, type: typeof course.endDate },
-    imageUrl: { mongoose: course.imageUrl, raw: rawFromDb?.imageUrl, type: typeof course.imageUrl },
-    published: { mongoose: course.published, raw: rawFromDb?.published, type: typeof course.published },
-    teacherId: { mongoose: String(course.teacherId?._id || course.teacherId), raw: String(rawFromDb?.teacherId), type: typeof course.teacherId },
-  };
-
-  const nullFields = [];
-  for (const [key, val] of Object.entries(fieldChecks)) {
-    if (val.mongoose == null || val.mongoose === '') {
-      nullFields.push(`${key} (mongoose=${val.mongoose}, raw=${val.raw})`);
-    }
-  }
-
-  console.log('=== DEBUG FIELD CHECKS ===');
-  console.log(JSON.stringify(fieldChecks, null, 2));
-  if (nullFields.length > 0) {
-    console.log('!!! CAMPOS NULL/VACIOS:', nullFields.join(', '));
-  } else {
-    console.log('>>> Todos los campos tienen datos');
-  }
-  console.log('=== END FIELD CHECKS ===');
 
   const sections = await Section.find({ courseId });
   const sectionIds = sections.map((section) => section._id);
@@ -102,7 +67,6 @@ const getCourseContentTree = async (req, res) => {
     return res.error('No tienes acceso a este curso', 403);
   }
 
-  // ========== DEBUG: Step 3 - Build response with _debug ==========
   const responsePayload = {
     course: {
       _id: course._id,
@@ -131,14 +95,7 @@ const getCourseContentTree = async (req, res) => {
         avatarUrl: student.avatarUrl,
       })),
     },
-    sections: tree,
-    _debug: {
-      rawFromDb,
-      fieldChecks,
-      nullFields,
-      mongooseKeys: Object.keys(mongooseObj),
-      reqUser: req.user || null,
-    },
+    sections: tree
   };
 
   return res.success(responsePayload);
