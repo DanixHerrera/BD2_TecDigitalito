@@ -4,6 +4,7 @@ const {
   sendMessage,
   getConversation,
   listMyConversations,
+  findOrCreateConversation,
 } = require('../controllers/messageController');
 
 const router = express.Router();
@@ -14,6 +15,7 @@ router.get('/test', (req, res) => {
 
 router.post('/', authMiddleware, sendMessage);
 router.get('/my-conversations', authMiddleware, listMyConversations);
+router.get('/find-or-create/:receiverId', authMiddleware, findOrCreateConversation);
 router.get('/conversation/:conversationId', authMiddleware, getConversation);
 
 module.exports = router;

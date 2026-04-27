@@ -9,6 +9,9 @@ function connectRaven() {
       process.env.RAVEN_DATABASE
     );
 
+    store.conventions.findCollectionNameForObjectLiteral = (entity) =>
+      entity?.collection || null;
+
     store.initialize();
     console.log('RavenDB conectado');
     return true;

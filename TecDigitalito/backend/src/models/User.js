@@ -35,6 +35,25 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    friends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    pendingFriendRequests: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     lastLoginAt: {
       type: Date,
       default: null,
