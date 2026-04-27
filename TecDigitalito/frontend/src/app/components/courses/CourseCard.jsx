@@ -3,44 +3,74 @@ import { courseService } from '../../services/courseService';
 import '@/styles/CourseView.css';
 
 export default function CourseCard({ course, role, onAction, onPublishSuccess }) {
+  const normalizedCourse = {
+    ...course,
+    course_id: course?.course_id || course?._id || course?.id,
+  };
+
+  const handlePublish = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!normalizedCourse.course_id) {
+      alert('No se pudo publicar: curso sin id');
+      return;
+    }
+
+    const result = await courseService.publishCourse(normalizedCourse.course_id);
+    if (result.ok) {
+      alert('Curso publicado con Ã©xito');
+      onPublishSuccess?.();
+      return;
+    }
+
+    alert(result.message || 'Error al publicar');
+  };
+
   const card = (
     <div className="card">
-      <img src={course.img} alt={course.name} className="course-card-image" />
+      <img
+        src={normalizedCourse.img}
+        alt={normalizedCourse.name}
+        className="course-card-image"
+      />
       <div className="course-card-content">
         {role && (
-          <span className={`course-card-tag ${role === 'Docente' ? 'tag-professor' : 'tag-student'}`}>
+          <span
+            className={`course-card-tag ${role === 'Docente' ? 'tag-professor' : 'tag-student'}`}
+          >
             {role}
           </span>
         )}
-        <p className="course-card-code">{course.code || 'IC-XXXX'}</p>
-        <h3 className="course-card-name">{course.name}</h3>
+        <p className="course-card-code">{normalizedCourse.code || 'IC-XXXX'}</p>
+        <h3 className="course-card-name">{normalizedCourse.name}</h3>
 
         {onAction && (
           <button
             className="btn btn-primary"
             style={{ marginTop: '1rem', width: '100%' }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAction(course); }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onAction(normalizedCourse);
+            }}
+            disabled={!normalizedCourse.course_id}
           >
             Matricular curso
           </button>
         )}
 
-        {role === 'Docente' && !course.published && (
+        {role === 'Docente' && !normalizedCourse.published && (
           <button
             className="btn btn-outline"
-            style={{ marginTop: '1rem', width: '100%', borderColor: '#f59e0b', color: '#f59e0b' }}
-            onClick={async (e) => { 
-              e.preventDefault(); 
-              e.stopPropagation(); 
-              const token = localStorage.getItem('token');
-              const res = await courseService.publishCourse(course.course_id, token);
-              if (res.ok) {
-                alert('Curso publicado con éxito');
-                if (onPublishSuccess) onPublishSuccess();
-              } else {
-                alert(res.message || 'Error al publicar');
-              }
+            style={{
+              marginTop: '1rem',
+              width: '100%',
+              borderColor: '#f59e0b',
+              color: '#f59e0b',
             }}
+            onClick={handlePublish}
+            disabled={!normalizedCourse.course_id}
           >
             Publicar Curso
           </button>
@@ -49,15 +79,21 @@ export default function CourseCard({ course, role, onAction, onPublishSuccess })
     </div>
   );
 
-  if (onAction) return card;
+  if (onAction) {
+    return card;
+  }
+
+  if (!normalizedCourse.course_id) {
+    return card;
+  }
 
   return (
     <Link
-      to={`/courses/${course.course_id}`}
-      state={{ role: role || 'Estudiante' }}
+      to={`/courses/${normalizedCourse.course_id}`}
       style={{ textDecoration: 'none', color: 'inherit' }}
     >
       {card}
     </Link>
   );
 }
+

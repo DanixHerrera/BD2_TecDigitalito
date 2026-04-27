@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { ArrowLeft } from 'lucide-react';
 import { courseService } from '../../services/courseService';
-import { Plus, ArrowLeft } from 'lucide-react';
 import '@/styles/CourseView.css';
 
 export default function CourseCreate() {
@@ -14,29 +14,27 @@ export default function CourseCreate() {
     description: '',
     startDate: '',
     endDate: '',
-    imageUrl: ''
+    imageUrl: '',
   });
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
-      const result = await courseService.createCourse(formData, token);
-      
+      const result = await courseService.createCourse(formData);
       if (result.ok) {
         navigate('/courses');
       } else {
         setError(result.message || 'Error al crear el curso');
       }
-    } catch (err) {
+    } catch {
       setError('Error de conexión con el servidor');
     } finally {
       setLoading(false);
@@ -54,7 +52,7 @@ export default function CourseCreate() {
 
       <div className="card" style={{ maxWidth: '800px', margin: '2rem auto', padding: '2rem' }}>
         {error && <div className="error-message" style={{ marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
-        
+
         <form onSubmit={handleSubmit} className="course-form">
           <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', marginBottom: '1.5rem' }}>
             <div className="form-group">
@@ -99,24 +97,11 @@ export default function CourseCreate() {
           <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
             <div className="form-group">
               <label className="form-label">Fecha de Inicio *</label>
-              <input
-                type="date"
-                name="startDate"
-                className="form-input"
-                value={formData.startDate}
-                onChange={handleChange}
-                required
-              />
+              <input type="date" name="startDate" className="form-input" value={formData.startDate} onChange={handleChange} required />
             </div>
             <div className="form-group">
               <label className="form-label">Fecha de Fin</label>
-              <input
-                type="date"
-                name="endDate"
-                className="form-input"
-                value={formData.endDate}
-                onChange={handleChange}
-              />
+              <input type="date" name="endDate" className="form-input" value={formData.endDate} onChange={handleChange} />
             </div>
           </div>
 
