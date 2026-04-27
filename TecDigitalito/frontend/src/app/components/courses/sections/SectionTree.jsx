@@ -34,7 +34,6 @@ function TreeNode({ node, isEditable, onUpdate, onRemove }) {
   const [editTitle, setEditTitle] = useState(node.title);
 
   const hasChildren = node.children && node.children.length > 0;
-  const hasBlocks = node.blocks && node.blocks.length > 0;
   const isLeaf = node.type === 'subtopic';
 
   const childType = node.type === 'section' ? 'topic' : node.type === 'topic' ? 'subtopic' : null;

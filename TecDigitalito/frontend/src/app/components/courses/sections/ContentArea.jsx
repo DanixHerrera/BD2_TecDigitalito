@@ -2,23 +2,29 @@ import { useState } from 'react';
 import SectionManager from './SectionManager';
 import SectionTree from './SectionTree';
 
-export default function ContentArea({ contentTree = [], isEditable }) {
-  const [nodes, setNodes] = useState(contentTree);
+export default function ContentArea({ contentTree = [], isEditable, onSaveContent }) {
+  const [draftNodes, setDraftNodes] = useState(null);
+  const nodes = draftNodes ?? contentTree;
 
   const handleAddSection = () => {
     const newSection = {
-      id: `sec-${Date.now()}`,
+      id: `sec-${crypto.randomUUID()}`,
       title: 'Nueva Sección',
       type: 'section',
       children: [],
     };
-    setNodes([...nodes, newSection]);
+
+    setDraftNodes([...(nodes || []), newSection]);
   };
 
   return (
     <div className="content-area-wrapper">
-      <SectionManager isEditable={isEditable} onAddSection={handleAddSection} />
-      <SectionTree nodes={nodes} isEditable={isEditable} onNodesChange={setNodes} />
+      <SectionManager 
+        isEditable={isEditable} 
+        onAddSection={handleAddSection} 
+        onSave={() => onSaveContent?.(nodes)}
+      />
+      <SectionTree nodes={nodes} isEditable={isEditable} onNodesChange={setDraftNodes} />
     </div>
   );
 }
