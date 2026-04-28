@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Lock, ShieldCheck, Activity } from 'lucide-react';
+import { validatePassword } from '@/lib/validations';
 import '@/styles/Settings.css';
 
 export default function Settings() {
@@ -50,7 +51,8 @@ function ChangePassword() {
   const [messageType, setMessageType] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const passwordIsValid = form.newPassword.length >= 6;
+  const passwordError = validatePassword(form.newPassword);
+  const passwordIsValid = !passwordError;
   const canSubmit = form.currentPassword && form.newPassword && passwordIsValid && !loading;
 
   const handleChange = (e) => {
@@ -132,7 +134,7 @@ function ChangePassword() {
             placeholder="Ingresa tu nueva contraseña"
           />
           <span className={passwordIsValid || !form.newPassword ? 'password-hint' : 'password-hint error'}>
-            Mínimo 6 caracteres.
+            {passwordError || 'Minimo 8 caracteres, una mayuscula, un numero y un especial.'}
           </span>
         </div>
 
