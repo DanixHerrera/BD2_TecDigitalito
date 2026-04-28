@@ -14,8 +14,9 @@ export default function Navbar({ onMenuClick }) {
       </div>
       <div className="navbar-actions">
         <Clock />
-        <Bell size={20} className="cursor-pointer hover:text-primary transition-colors" />
-        <User size={20} className="cursor-pointer hover:text-primary transition-colors" />
+        <Link to="/profile" className="navbar-user-link">
+          <User size={20} className="cursor-pointer hover:text-primary transition-colors" />
+        </Link>
       </div>
     </nav>
   )

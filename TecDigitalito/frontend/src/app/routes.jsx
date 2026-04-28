@@ -15,6 +15,7 @@ import UserMessages from './pages/social/UserMessages'
 import Students from './pages/social/Students'
 import FriendCourses from './pages/social/FriendCourses';
 import Settings from './pages/settings/Settings';
+import Profile from './pages/Profile';
 
 export const router = createBrowserRouter([
   {
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
       { path: '/social/friends/:friendId/courses', element: <FriendCourses /> },
       { path: '*',                  element: <NotFound /> },
       { path: '/settings', element: <Settings /> },
+      { path: '/profile', element: <Profile /> },
     ],
   },
 ])

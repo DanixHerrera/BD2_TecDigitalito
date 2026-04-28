@@ -51,14 +51,18 @@ export default function Register() {
     const file = e.target.files[0];
     if (!file) return;
 
-    const imageUrl = URL.createObjectURL(file);
-    setFormData(prev => ({ ...prev, avatar: file }));
-    setAvatarPreview(imageUrl);
-    if (errors.avatar) setErrors(prev => ({ ...prev, avatar: null }));
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64String = reader.result;
+      setFormData(prev => ({ ...prev, avatar: file }));
+      setAvatarPreview(base64String);
+      if (errors.avatar) setErrors(prev => ({ ...prev, avatar: null }));
 
-    // Extraer y aplicar color dominante
-    const color = await getDominantColor(imageUrl);
-    setVisualColor(color);
+      // Extraer y aplicar color dominante
+      const color = await getDominantColor(base64String);
+      setVisualColor(color);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
