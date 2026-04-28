@@ -30,14 +30,31 @@ async function authMiddleware(req, res, next) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const session = await redisClient.get(getSessionKey(decoded.userId, token));
+    const sessionRaw = await redisClient.get(getSessionKey(decoded.userId, token));
 
-    if (!session) {
+    if (!sessionRaw) {
       return res.status(401).json({
         ok: false,
         message: 'Sesión inválida o expirada',
       });
     }
+
+    const session = JSON.parse(sessionRaw);
+
+if (session.ip && session.userAgent) {
+  if (
+    session.ip !== req.ip ||
+    session.userAgent !== req.get('user-agent')
+  ) {
+    await redisClient.del(getSessionKey(decoded.userId, token));
+    res.clearCookie('session_token');
+
+    return res.status(401).json({
+      ok: false,
+      message: 'Sesión invalidada por actividad sospechosa',
+    });
+  }
+}
 
     req.user = decoded;
     next();
