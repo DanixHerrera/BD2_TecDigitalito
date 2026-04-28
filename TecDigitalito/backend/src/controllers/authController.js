@@ -25,6 +25,22 @@ function getResetPasswordKey(token) {
   return `reset-password:${token}`;
 }
 
+function validateSecurePassword(password) {
+  if (password.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
+  
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+  if (!hasUpperCase) return 'La contraseña debe tener al menos una mayuscula.';
+  if (!hasLowerCase) return 'La contraseña debe tener al menos una minuscula.';
+  if (!hasNumber) return 'La contraseña debe tener al menos un numero.';
+  if (!hasSpecialChar) return 'La contraseña debe tener al menos un caracter especial.';
+
+  return null;
+}
+
 const forgotPassword = async (req, res) => {
   const { email, username } = req.body;
 
@@ -90,9 +106,8 @@ const resetPassword = async (req, res) => {
     return res.error('token y newPassword son requeridos');
   }
 
-  if (newPassword.length < 6) {
-    return res.error('La nueva contraseña debe tener al menos 6 caracteres');
-  }
+  const invalidPassword = validateSecurePassword(newPassword);
+  if (invalidPassword) return res.error(invalidPassword);
 
   const tokenKey = getResetPasswordKey(token);
   const tokenData = await redisClient.get(tokenKey);
@@ -128,9 +143,8 @@ const register = async (req, res) => {
     return res.error('Todos los campos son requeridos');
   }
 
-  if (password.length < 6) {
-    return res.error('La contraseña debe tener al menos 6 caracteres');
-  }
+  const invalidPassword = validateSecurePassword(password);
+  if (invalidPassword) return res.error(invalidPassword);
 
   const existingUser = await User.findOne({
     $or: [{ username }, { email: email.toLowerCase() }],
@@ -357,9 +371,8 @@ const changePassword = async (req, res) => {
     return res.error('currentPassword y newPassword son requeridos');
   }
 
-  if (newPassword.length < 6) {
-    return res.error('La nueva contraseña debe tener al menos 6 caracteres');
-  }
+  const invalidPassword = validateSecurePassword(newPassword);
+  if (invalidPassword) return res.error(invalidPassword);
 
   const userId = req.user.userId;
   const user = await User.findById(userId);

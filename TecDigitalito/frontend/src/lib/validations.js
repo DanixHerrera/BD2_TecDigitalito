@@ -15,9 +15,21 @@ export const validateEmail = (email) => {
 
 export const validatePassword = (password) => {
   if (!password) return 'La contraseña es requerida.';
+
   if (password.length < 8) {
     return 'La contraseña debe tener al menos 8 caracteres.';
   }
+
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+  if (!hasUpperCase) return 'La contraseña debe tener al menos una mayuscula.';
+  if (!hasLowerCase) return 'La contraseña debe tener al menos una minuscula.';
+  if (!hasNumber) return 'La contraseña debe tener al menos un numero.';
+  if (!hasSpecialChar) return 'La contraseña debe tener al menos un caracter especial.';
+
   return null;
 };
 
