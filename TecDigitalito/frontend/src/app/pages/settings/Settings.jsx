@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Lock, ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Lock, ShieldCheck, Activity } from 'lucide-react';
 import '@/styles/Settings.css';
 
 export default function Settings() {
@@ -9,7 +9,7 @@ export default function Settings() {
     <div className="settings-page">
       <div className="settings-header">
         <h1>Configuración</h1>
-        <p>Configuracion de tu cuenta.</p>
+        <p>Administra la seguridad y actividad de tu cuenta.</p>
       </div>
 
       <div className="settings-layout">
@@ -21,10 +21,19 @@ export default function Settings() {
             <Lock size={18} />
             Cambiar contraseña
           </button>
+
+          <button
+            className={`settings-tab ${activeTab === 'activity' ? 'active' : ''}`}
+            onClick={() => setActiveTab('activity')}
+          >
+            <Activity size={18} />
+            Actividad de sesión
+          </button>
         </aside>
 
         <section className="settings-content">
           {activeTab === 'password' && <ChangePassword />}
+          {activeTab === 'activity' && <SessionActivity />}
         </section>
       </div>
     </div>
@@ -61,8 +70,6 @@ function ChangePassword() {
     }
 
     setLoading(true);
-    setMessage('');
-    setMessageType('');
 
     try {
       const res = await fetch('/api/auth/change-password', {
@@ -99,7 +106,7 @@ function ChangePassword() {
         </div>
         <div>
           <h2>Cambiar contraseña</h2>
-          <p>Actualiza tu contraseña para mejorar la seguridad de tu cuenta.</p>
+          <p>Actualiza tu contraseña para mantener tu cuenta segura.</p>
         </div>
       </div>
 
@@ -129,11 +136,7 @@ function ChangePassword() {
           </span>
         </div>
 
-        {message && (
-          <div className={`settings-message ${messageType}`}>
-            {message}
-          </div>
-        )}
+        {message && <div className={`settings-message ${messageType}`}>{message}</div>}
 
         <div className="settings-actions">
           <button type="submit" className="settings-save-btn" disabled={!canSubmit}>
@@ -141,6 +144,124 @@ function ChangePassword() {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function SessionActivity() {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const formatDevice = (userAgent = '') => {
+  if (!userAgent) return 'Dispositivo desconocido';
+
+  const browser = userAgent.includes('Edg')
+    ? 'Microsoft Edge'
+    : userAgent.includes('Chrome')
+      ? 'Google Chrome'
+      : userAgent.includes('Firefox')
+        ? 'Mozilla Firefox'
+        : userAgent.includes('Safari')
+          ? 'Safari'
+          : 'Navegador desconocido';
+
+  const os = userAgent.includes('Windows')
+    ? 'Windows'
+    : userAgent.includes('Mac')
+      ? 'macOS'
+      : userAgent.includes('Linux')
+        ? 'Linux'
+        : userAgent.includes('Android')
+          ? 'Android'
+          : userAgent.includes('iPhone')
+            ? 'iPhone'
+            : 'Sistema desconocido';
+
+  return `${browser} · ${os}`;
+};
+
+  useEffect(() => {
+    const loadLogs = async () => {
+      try {
+        const res = await fetch('/api/auth/logs', {
+          credentials: 'include',
+        });
+
+        const data = await res.json();
+
+        if (!data.ok) {
+          setError(data.message || 'No se pudo cargar la actividad.');
+          return;
+        }
+
+        setLogs(data.logs || []);
+      } catch {
+        setError('Error de conexión con el servidor.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLogs();
+  }, []);
+
+  const getActionLabel = (action) => {
+    if (action === 'login_success') return 'Inicio exitoso';
+    if (action === 'login_failed') return 'Inicio fallido';
+    if (action === 'logout') return 'Cierre de sesión';
+    return action;
+  };
+
+  return (
+    <div className="settings-card activity-card">
+      <div className="settings-card-header">
+        <div className="settings-icon-box">
+          <Activity size={24} />
+        </div>
+        <div>
+          <h2>Actividad de sesión</h2>
+          <p>Consulta los últimos inicios y cierres de sesión registrados.</p>
+        </div>
+      </div>
+
+      {loading && <div className="settings-empty">Cargando actividad...</div>}
+
+      {!loading && error && <div className="settings-message error">{error}</div>}
+
+      {!loading && !error && logs.length === 0 && (
+        <div className="settings-empty">No hay actividad registrada.</div>
+      )}
+
+      {!loading && !error && logs.length > 0 && (
+        <div className="activity-table-wrapper">
+          <table className="activity-table">
+            <thead>
+              <tr>
+                <th>Acción</th>
+                <th>Usuario</th>
+                <th>IP</th>
+                <th>Dispositivo</th>
+                <th>Fecha y hora</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map((log) => (
+                <tr key={log._id}>
+                  <td>
+                    <span className={`activity-badge ${log.action}`}>
+                      {getActionLabel(log.action)}
+                    </span>
+                  </td>
+                  <td>{log.username || 'N/A'}</td>
+                  <td>{log.ip || 'N/A'}</td>
+                  <td className="activity-device">{formatDevice(log.userAgent)}</td>
+                  <td>{new Date(log.createdAt).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
-import { validatePassword, validateForm } from '../../../lib/validations';
+import { validateForm } from '../../../lib/validations';
 import '../../../styles/Login.css';
 
 export default function Login() {
@@ -17,7 +17,10 @@ export default function Login() {
       if (!value?.trim()) return 'Este campo es requerido';
       return null;
     },
-    password: validatePassword,
+    password: (value) => {
+      if (!value?.trim()) return 'La contraseña es requerida';
+      return null;
+    },
   };
 
   const handleChange = (e) => {

@@ -7,8 +7,11 @@ const {
   forgotPassword,
   resetPassword,
   me,
+  getAuthLogs,
 } = require('../controllers/authController');
+
 const authMiddleware = require('../middlewares/authMiddleware');
+const adminMiddleware = require('../middlewares/adminMiddleware');
 
 const router = express.Router();
 
@@ -20,9 +23,10 @@ router.post('/register', register);
 router.post('/login', login);
 router.post('/logout', authMiddleware, logout);
 router.post('/change-password', authMiddleware, changePassword);
-
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 router.get('/me', authMiddleware, me);
+
+router.get('/logs', authMiddleware, adminMiddleware, getAuthLogs);
 
 module.exports = router;

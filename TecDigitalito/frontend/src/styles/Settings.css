@@ -201,3 +201,70 @@
     padding: 1.25rem;
   }
 }
+.activity-card {
+  max-width: 1000px;
+}
+
+.activity-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.activity-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.activity-table th,
+.activity-table td {
+  padding: 0.85rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.activity-table th {
+  color: var(--muted-foreground);
+  font-weight: 800;
+  background: var(--muted);
+}
+
+.activity-device {
+  max-width: 320px;
+  word-break: break-word;
+  color: var(--muted-foreground);
+  font-size: 0.8rem;
+}
+
+.activity-badge {
+  display: inline-block;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.activity-badge.login_success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.activity-badge.login_failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.activity-badge.logout {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.settings-empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border-radius: 0.75rem;
+}

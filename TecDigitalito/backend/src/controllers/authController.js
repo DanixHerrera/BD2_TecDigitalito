@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { redisClient } = require('../databases/redis');
+const AuthLog = require('../models/AuthLog');
 
 const SESSION_TTL = Number(process.env.SESSION_TTL || 3600);
 const LOGIN_ATTEMPTS_TTL = Number(process.env.LOGIN_ATTEMPTS_TTL || 900);
@@ -52,12 +53,16 @@ const forgotPassword = async (req, res) => {
 
   const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
-  return res.success({
-    resetToken: token,
-    resetLink,
-    expiresInSeconds: ttl,
-  }, 'Si la cuenta existe, se generó un enlace de recuperación');
+  return res.success(
+    {
+      resetToken: token,
+      resetLink,
+      expiresInSeconds: ttl,
+    },
+    'Si la cuenta existe, se generó un enlace de recuperación'
+  );
 };
+
 const me = async (req, res) => {
   const user = await User.findById(req.user.userId).select('-passwordHash -salt');
 
@@ -73,6 +78,7 @@ const me = async (req, res) => {
       fullName: user.fullName,
       birthDate: user.birthDate,
       avatarUrl: user.avatarUrl,
+      role: user.role || 'user',
     },
   });
 };
@@ -148,40 +154,57 @@ const register = async (req, res) => {
   });
 
   const token = jwt.sign(
-    { userId: newUser._id.toString(), username: newUser.username },
+    {
+      userId: newUser._id.toString(),
+      username: newUser.username,
+      role: newUser.role || 'user',
+    },
     process.env.JWT_SECRET,
     { expiresIn: SESSION_TTL }
   );
 
   await redisClient.set(
-  getSessionKey(newUser._id.toString(), token),
-  JSON.stringify({
-    userId: newUser._id.toString(),
+    getSessionKey(newUser._id.toString(), token),
+    JSON.stringify({
+      userId: newUser._id.toString(),
+      username: newUser.username,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      createdAt: new Date().toISOString(),
+    }),
+    { EX: SESSION_TTL }
+  );
+
+  await AuthLog.create({
+    userId: newUser._id,
     username: newUser.username,
+    action: 'login_success',
     ip: req.ip,
     userAgent: req.get('user-agent'),
-    createdAt: new Date().toISOString(),
-  }),
-  { EX: SESSION_TTL }
-);
+  });
 
   res.cookie('session_token', token, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  maxAge: SESSION_TTL * 1000,
-});
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: SESSION_TTL * 1000,
+  });
 
-  return res.success({
-    user: {
-      id: newUser._id,
-      username: newUser.username,
-      email: newUser.email,
-      fullName: newUser.fullName,
-      birthDate: newUser.birthDate,
-      avatarUrl: newUser.avatarUrl,
-    }
-  }, 'Usuario registrado correctamente e inicio de sesión automático', 201);
+  return res.success(
+    {
+      user: {
+        id: newUser._id,
+        username: newUser.username,
+        email: newUser.email,
+        fullName: newUser.fullName,
+        birthDate: newUser.birthDate,
+        avatarUrl: newUser.avatarUrl,
+        role: newUser.role || 'user',
+      },
+    },
+    'Usuario registrado correctamente e inicio de sesión automático',
+    201
+  );
 };
 
 const login = async (req, res) => {
@@ -191,74 +214,111 @@ const login = async (req, res) => {
     return res.error('Username y password son requeridos');
   }
 
-  const blockedKey = getBlockedKey(username);
+  const normalizedUsername = username.trim();
+  const blockedKey = getBlockedKey(normalizedUsername);
   const isBlocked = await redisClient.get(blockedKey);
 
   if (isBlocked) {
+    await AuthLog.create({
+      username: normalizedUsername,
+      action: 'login_failed',
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
     return res.error('Credenciales inválidas', 401);
   }
 
   const user = await User.findOne({
-    $or: [{ username: username }, { email: username.toLowerCase() }],
+    $or: [
+      { username: normalizedUsername },
+      { email: normalizedUsername.toLowerCase() },
+    ],
   });
 
   if (!user) {
-    return await handleFailedLogin(username, res);
+    return await handleFailedLogin(normalizedUsername, req, res);
   }
 
   const isValidPassword = await bcrypt.compare(password + user.salt, user.passwordHash);
 
   if (!isValidPassword) {
-    return await handleFailedLogin(username, res);
+    return await handleFailedLogin(normalizedUsername, req, res);
   }
 
-  await redisClient.del(getFailedKey(username));
+  await redisClient.del(getFailedKey(normalizedUsername));
   await redisClient.del(blockedKey);
+
+  await AuthLog.create({
+    userId: user._id,
+    username: user.username,
+    action: 'login_success',
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+  });
 
   user.lastLoginAt = new Date();
   await user.save();
 
   const token = jwt.sign(
-    { userId: user._id.toString(), username: user.username },
+    {
+      userId: user._id.toString(),
+      username: user.username,
+      role: user.role || 'user',
+    },
     process.env.JWT_SECRET,
     { expiresIn: SESSION_TTL }
   );
 
   await redisClient.set(
-  getSessionKey(user._id.toString(), token),
-  JSON.stringify({
-    userId: user._id.toString(),
-    username: user.username,
-    ip: req.ip,
-    userAgent: req.get('user-agent'),
-    createdAt: new Date().toISOString(),
-  }),
-  { EX: SESSION_TTL }
-);
+    getSessionKey(user._id.toString(), token),
+    JSON.stringify({
+      userId: user._id.toString(),
+      username: user.username,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      createdAt: new Date().toISOString(),
+    }),
+    { EX: SESSION_TTL }
+  );
 
   res.cookie('session_token', token, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  maxAge: SESSION_TTL * 1000,
-});
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: SESSION_TTL * 1000,
+  });
 
-  return res.success({
-    user: {
-      id: user._id,
-      username: user.username,
-      fullName: user.fullName,
-    }
-  }, 'Login exitoso');
+  return res.success(
+    {
+      user: {
+        id: user._id,
+        username: user.username,
+        fullName: user.fullName,
+        role: user.role || 'user',
+      },
+    },
+    'Login exitoso'
+  );
 };
 
-async function handleFailedLogin(username, res) {
+async function handleFailedLogin(username, req, res) {
   const failedKey = getFailedKey(username);
+
+  await AuthLog.create({
+    username,
+    action: 'login_failed',
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+  });
+
   const attempts = await redisClient.incr(failedKey);
   await redisClient.expire(failedKey, LOGIN_ATTEMPTS_TTL);
+
   if (attempts >= 5) {
     await redisClient.set(getBlockedKey(username), 'true', { EX: BLOCK_TTL });
   }
+
   return res.error('Credenciales inválidas', 401);
 }
 
@@ -267,12 +327,26 @@ const logout = async (req, res) => {
 
   if (token) {
     const decoded = jwt.decode(token);
+
     if (decoded?.userId) {
       await redisClient.del(getSessionKey(decoded.userId, token));
+
+      await AuthLog.create({
+        userId: decoded.userId,
+        username: decoded.username,
+        action: 'logout',
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+      });
     }
   }
 
-  res.clearCookie('session_token');
+  res.clearCookie('session_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  });
+
   return res.success(null, 'Sesión cerrada correctamente');
 };
 
@@ -313,6 +387,14 @@ const changePassword = async (req, res) => {
   return res.success(null, 'Contraseña actualizada correctamente');
 };
 
+const getAuthLogs = async (req, res) => {
+  const logs = await AuthLog.find()
+    .sort({ createdAt: -1 })
+    .limit(100);
+
+  return res.success({ logs });
+};
+
 module.exports = {
   register,
   login,
@@ -321,4 +403,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   me,
+  getAuthLogs,
 };
