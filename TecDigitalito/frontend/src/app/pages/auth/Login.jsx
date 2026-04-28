@@ -13,25 +13,25 @@ export default function Login() {
   const navigate = useNavigate();
 
   const validationRules = {
-    username: validateEmail,
-    password: validatePassword,
-  };
+  username: (value) => {
+    if (!value?.trim()) return 'Este campo es requerido';
+    return null;
+  },
+  password: validatePassword,
+};
 
   const handleChange = (e) => {
     const { id, value } = e.target;
-    setFormData(prev => ({ ...prev, [id]: value }));
+    setFormData((prev) => ({ ...prev, [id]: value }));
 
-    // Limpiar error del campo mientras el usuario escribe
     if (errors[id]) {
-      setErrors(prev => ({ ...prev, [id]: null }));
+      setErrors((prev) => ({ ...prev, [id]: null }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validar todos los campos
-    // (Opcional: Si username ahora puede ser email o username, tal vez validateEmail sea muy restrictivo, pero lo dejamos como estaba)
     const newErrors = validateForm(formData, validationRules);
 
     if (Object.keys(newErrors).length > 0) {
@@ -43,18 +43,23 @@ export default function Login() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: formData.username, password: formData.password })
+        credentials: 'include',
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+        }),
       });
+
       const data = await res.json();
-      
-      if (!data.ok) { 
-        setErrors({ form: data.message }); 
-        return; 
+
+      if (!data.ok) {
+        setErrors({ form: data.message });
+        return;
       }
-      
+
       login(data.user);
       navigate('/');
-    } catch (error) {
+    } catch {
       setErrors({ form: 'Error de conexión con el servidor.' });
     }
   };
@@ -66,22 +71,39 @@ export default function Login() {
 
         <div className="login-content">
           <h2 className="login-title">Iniciar Sesión</h2>
-          {errors.form && <div className="error-message form-error" style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#ffe5e5', color: '#d32f2f', borderRadius: '4px', textAlign: 'center', fontSize: '0.875rem' }}>{errors.form}</div>}
+
+          {errors.form && (
+            <div
+              className="error-message form-error"
+              style={{
+                marginBottom: '1rem',
+                padding: '0.75rem',
+                backgroundColor: '#ffe5e5',
+                color: '#d32f2f',
+                borderRadius: '4px',
+                textAlign: 'center',
+                fontSize: '0.875rem',
+              }}
+            >
+              {errors.form}
+            </div>
+          )}
 
           <form className="login-form" onSubmit={handleSubmit} noValidate>
             <div className="form-group">
               <label className="form-label" htmlFor="username">
-                Dirección de correo electrónico <span>*</span>
+                Correo electronico o usuario <span>*</span>
               </label>
+
               <div className="input-wrapper">
                 <input
-                  id="username"
-                  type="email"
-                  className={`form-input ${errors.username ? 'error' : ''}`}
-                  placeholder="ejemplo@estudiantec.cr"
-                  value={formData.username}
-                  onChange={handleChange}
-                />
+  id="username"
+  type="text"
+  className={`form-input ${errors.username ? 'error' : ''}`}
+  placeholder="ejemplo@estudiantec.cr o usuario"
+  value={formData.username}
+  onChange={handleChange}
+/>
                 {errors.username && <p className="error-message">{errors.username}</p>}
               </div>
             </div>
@@ -90,14 +112,16 @@ export default function Login() {
               <label className="form-label" htmlFor="password">
                 Contraseña <span>*</span>
               </label>
+
               <div className="input-wrapper">
                 <input
                   id="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   className={`form-input ${errors.password ? 'error' : ''}`}
                   value={formData.password}
                   onChange={handleChange}
                 />
+
                 <button
                   type="button"
                   className="password-toggle"
@@ -105,11 +129,16 @@ export default function Login() {
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
+
                 {errors.password && <p className="error-message">{errors.password}</p>}
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary" style={{marginTop: '1rem', width: '100%'}}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{ marginTop: '1rem', width: '100%' }}
+            >
               Iniciar Sesión
             </button>
           </form>
@@ -118,8 +147,6 @@ export default function Login() {
             ¿No tienes una cuenta? <a href="/register" className="footer-link">Registrarse</a>
           </div>
         </div>
-
-
       </div>
     </div>
   );

@@ -58,6 +58,24 @@ const forgotPassword = async (req, res) => {
     expiresInSeconds: ttl,
   }, 'Si la cuenta existe, se generó un enlace de recuperación');
 };
+const me = async (req, res) => {
+  const user = await User.findById(req.user.userId).select('-passwordHash -salt');
+
+  if (!user) {
+    return res.errorNotFound('Usuario no encontrado');
+  }
+
+  return res.success({
+    user: {
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      fullName: user.fullName,
+      birthDate: user.birthDate,
+      avatarUrl: user.avatarUrl,
+    },
+  });
+};
 
 const resetPassword = async (req, res) => {
   const { token, newPassword } = req.body;
@@ -136,21 +154,23 @@ const register = async (req, res) => {
   );
 
   await redisClient.set(
-    getSessionKey(newUser._id.toString(), token),
-    JSON.stringify({
-      userId: newUser._id.toString(),
-      username: newUser.username,
-      createdAt: new Date().toISOString(),
-    }),
-    { EX: SESSION_TTL }
-  );
+  getSessionKey(newUser._id.toString(), token),
+  JSON.stringify({
+    userId: newUser._id.toString(),
+    username: newUser.username,
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    createdAt: new Date().toISOString(),
+  }),
+  { EX: SESSION_TTL }
+);
 
   res.cookie('session_token', token, {
-    httpOnly: true,
-    secure: false,
-    sameSite: 'lax',
-    maxAge: SESSION_TTL * 1000,
-  });
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  maxAge: SESSION_TTL * 1000,
+});
 
   return res.success({
     user: {
@@ -205,21 +225,23 @@ const login = async (req, res) => {
   );
 
   await redisClient.set(
-    getSessionKey(user._id.toString(), token),
-    JSON.stringify({
-      userId: user._id.toString(),
-      username: user.username,
-      createdAt: new Date().toISOString(),
-    }),
-    { EX: SESSION_TTL }
-  );
+  getSessionKey(user._id.toString(), token),
+  JSON.stringify({
+    userId: user._id.toString(),
+    username: user.username,
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    createdAt: new Date().toISOString(),
+  }),
+  { EX: SESSION_TTL }
+);
 
   res.cookie('session_token', token, {
-    httpOnly: true,
-    secure: false,
-    sameSite: 'lax',
-    maxAge: SESSION_TTL * 1000,
-  });
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  maxAge: SESSION_TTL * 1000,
+});
 
   return res.success({
     user: {
@@ -298,4 +320,5 @@ module.exports = {
   changePassword,
   forgotPassword,
   resetPassword,
+  me,
 };
