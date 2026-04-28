@@ -10,7 +10,7 @@ export default function Navbar({ onMenuClick }) {
         <button onClick={onMenuClick} className="navbar-btn-mobile">
           <Menu size={20} />
         </button>
-        <Link to="/this-route-does-not-exist" className="navbar-brand">tecDigitalito</Link>
+        <Link to="/" className="navbar-brand">tecDigitalito</Link>
       </div>
       <div className="navbar-actions">
         <Clock />

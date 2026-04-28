@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
-import { validateEmail, validatePassword, validateForm } from '../../../lib/validations';
+import { validatePassword, validateForm } from '../../../lib/validations';
 import '../../../styles/Login.css';
 
 export default function Login() {
@@ -13,19 +13,19 @@ export default function Login() {
   const navigate = useNavigate();
 
   const validationRules = {
-  username: (value) => {
-    if (!value?.trim()) return 'Este campo es requerido';
-    return null;
-  },
-  password: validatePassword,
-};
+    username: (value) => {
+      if (!value?.trim()) return 'Este campo es requerido';
+      return null;
+    },
+    password: validatePassword,
+  };
 
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
 
-    if (errors[id]) {
-      setErrors((prev) => ({ ...prev, [id]: null }));
+    if (errors[id] || errors.form) {
+      setErrors((prev) => ({ ...prev, [id]: null, form: null }));
     }
   };
 
@@ -67,19 +67,21 @@ export default function Login() {
   return (
     <div className="login-container">
       <div className="login-card">
-        <div className="login-visual"></div>
+        <div className="login-visual" aria-hidden="true"></div>
 
-        <div className="login-content">
-          <h2 className="login-title">Iniciar Sesión</h2>
+        <main className="login-content">
+          <h1 className="login-title">Iniciar Sesión</h1>
 
           {errors.form && (
             <div
+              role="alert"
+              aria-live="assertive"
               className="error-message form-error"
               style={{
                 marginBottom: '1rem',
                 padding: '0.75rem',
                 backgroundColor: '#ffe5e5',
-                color: '#d32f2f',
+                color: '#9b1c1c',
                 borderRadius: '4px',
                 textAlign: 'center',
                 fontSize: '0.875rem',
@@ -89,28 +91,42 @@ export default function Login() {
             </div>
           )}
 
-          <form className="login-form" onSubmit={handleSubmit} noValidate>
+          <form
+            className="login-form"
+            onSubmit={handleSubmit}
+            noValidate
+            aria-label="Formulario de inicio de sesión"
+          >
             <div className="form-group">
               <label className="form-label" htmlFor="username">
-                Correo electronico o usuario <span>*</span>
+                Correo electrónico o usuario <span aria-hidden="true">*</span>
               </label>
 
               <div className="input-wrapper">
                 <input
-  id="username"
-  type="text"
-  className={`form-input ${errors.username ? 'error' : ''}`}
-  placeholder="ejemplo@estudiantec.cr o usuario"
-  value={formData.username}
-  onChange={handleChange}
-/>
-                {errors.username && <p className="error-message">{errors.username}</p>}
+                  id="username"
+                  type="text"
+                  className={`form-input ${errors.username ? 'error' : ''}`}
+                  placeholder="correo@ejemplo.com o usuario"
+                  value={formData.username}
+                  onChange={handleChange}
+                  autoComplete="username"
+                  aria-required="true"
+                  aria-invalid={!!errors.username}
+                  aria-describedby={errors.username ? 'username-error' : undefined}
+                />
+
+                {errors.username && (
+                  <p id="username-error" className="error-message" role="alert">
+                    {errors.username}
+                  </p>
+                )}
               </div>
             </div>
 
             <div className="form-group">
               <label className="form-label" htmlFor="password">
-                Contraseña <span>*</span>
+                Contraseña <span aria-hidden="true">*</span>
               </label>
 
               <div className="input-wrapper">
@@ -120,17 +136,27 @@ export default function Login() {
                   className={`form-input ${errors.password ? 'error' : ''}`}
                   value={formData.password}
                   onChange={handleChange}
+                  autoComplete="current-password"
+                  aria-required="true"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
                 />
 
                 <button
                   type="button"
                   className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-pressed={showPassword}
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
                 </button>
 
-                {errors.password && <p className="error-message">{errors.password}</p>}
+                {errors.password && (
+                  <p id="password-error" className="error-message" role="alert">
+                    {errors.password}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -146,7 +172,7 @@ export default function Login() {
           <div className="login-footer">
             ¿No tienes una cuenta? <a href="/register" className="footer-link">Registrarse</a>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
