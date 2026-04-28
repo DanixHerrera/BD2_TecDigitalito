@@ -125,7 +125,10 @@ export default function Friends() {
                 <button className="btn btn-outline" onClick={() => handleMessage(friend.userId)}>
                   Mensaje
                 </button>
-                <button className="btn btn-primary">
+                <button
+                  className="btn btn-primary"
+                  onClick={() => navigate(`/social/friends/${friend.userId}/courses`)}
+                  >
                   Cursos
                 </button>
               </div>

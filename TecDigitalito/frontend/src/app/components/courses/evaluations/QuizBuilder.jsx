@@ -16,22 +16,49 @@ export default function QuizBuilder({ onSave }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const now = new Date().toISOString().slice(0, 16);
+
+  const requiredFieldsFilled =
+    title.trim() &&
+    startDate &&
+    endDate;
+
+  const datesAreValid =
+    startDate >= now &&
+    endDate >= startDate;
+
+  const questionsAreValid = questions.every((q) =>
+    q.text.trim() &&
+    q.options.filter((o) => o.trim()).length >= 2 &&
+    q.correctOptionIndex < q.options.filter((o) => o.trim()).length
+  );
+
+  const canSubmit =
+    requiredFieldsFilled &&
+    datesAreValid &&
+    questionsAreValid &&
+    !saving;
+
   const updateQuestion = (index, patch) => {
-    setQuestions((prev) => prev.map((question, currentIndex) => (
-      currentIndex === index ? { ...question, ...patch } : question
-    )));
+    setQuestions((prev) =>
+      prev.map((question, currentIndex) =>
+        currentIndex === index ? { ...question, ...patch } : question
+      )
+    );
   };
 
   const updateOption = (questionIndex, optionIndex, value) => {
-    setQuestions((prev) => prev.map((question, currentIndex) => {
-      if (currentIndex !== questionIndex) return question;
+    setQuestions((prev) =>
+      prev.map((question, currentIndex) => {
+        if (currentIndex !== questionIndex) return question;
 
-      const nextOptions = question.options.map((option, currentOptionIndex) => (
-        currentOptionIndex === optionIndex ? value : option
-      ));
+        const nextOptions = question.options.map((option, currentOptionIndex) =>
+          currentOptionIndex === optionIndex ? value : option
+        );
 
-      return { ...question, options: nextOptions };
-    }));
+        return { ...question, options: nextOptions };
+      })
+    );
   };
 
   const addQuestion = () => {
@@ -39,19 +66,28 @@ export default function QuizBuilder({ onSave }) {
   };
 
   const removeQuestion = (index) => {
-    setQuestions((prev) => prev.length === 1 ? prev : prev.filter((_, currentIndex) => currentIndex !== index));
+    setQuestions((prev) =>
+      prev.length === 1 ? prev : prev.filter((_, i) => i !== index)
+    );
   };
 
   const addOption = (questionIndex) => {
-    setQuestions((prev) => prev.map((question, currentIndex) => (
-      currentIndex === questionIndex
-        ? { ...question, options: [...question.options, ''] }
-        : question
-    )));
+    setQuestions((prev) =>
+      prev.map((question, currentIndex) =>
+        currentIndex === questionIndex
+          ? { ...question, options: [...question.options, ''] }
+          : question
+      )
+    );
   };
 
   const handleSubmit = async () => {
     setError('');
+
+    if (!canSubmit) {
+      setError('Verifica datos, fechas y preguntas.');
+      return;
+    }
 
     const payload = {
       title: title.trim(),
@@ -66,15 +102,6 @@ export default function QuizBuilder({ onSave }) {
         correctOptionIndex: question.correctOptionIndex,
       })),
     };
-
-    const hasInvalidQuestion = payload.questions.some((question) => (
-      !question.text || question.options.length < 2 || question.correctOptionIndex >= question.options.length
-    ));
-
-    if (!payload.title || !payload.startDate || !payload.endDate || hasInvalidQuestion) {
-      setError('Completa el título, fechas y al menos dos opciones válidas por pregunta.');
-      return;
-    }
 
     setSaving(true);
     const result = await onSave(payload);
@@ -106,6 +133,7 @@ export default function QuizBuilder({ onSave }) {
             placeholder="Ej: Quiz 1 - Fundamentos"
           />
         </div>
+
         <div className="quiz-input-group">
           <label className="quiz-label">Fecha inicio</label>
           <input
@@ -113,8 +141,10 @@ export default function QuizBuilder({ onSave }) {
             type="datetime-local"
             value={startDate}
             onChange={(event) => setStartDate(event.target.value)}
+            min={now}
           />
         </div>
+
         <div className="quiz-input-group">
           <label className="quiz-label">Fecha fin</label>
           <input
@@ -122,6 +152,7 @@ export default function QuizBuilder({ onSave }) {
             type="datetime-local"
             value={endDate}
             onChange={(event) => setEndDate(event.target.value)}
+            min={startDate || now}
           />
         </div>
       </div>
@@ -159,7 +190,6 @@ export default function QuizBuilder({ onSave }) {
                 className="quiz-option-radio"
                 checked={question.correctOptionIndex === optionIndex}
                 onChange={() => updateQuestion(questionIndex, { correctOptionIndex: optionIndex })}
-                title="Marcar como correcta"
               />
               <input
                 className="quiz-option-input"
@@ -170,7 +200,7 @@ export default function QuizBuilder({ onSave }) {
             </div>
           ))}
 
-          <button className="quiz-btn-secondary" type="button" style={{ marginTop: '0.5rem' }} onClick={() => addOption(questionIndex)}>
+          <button className="quiz-btn-secondary" type="button" onClick={() => addOption(questionIndex)}>
             <Plus size={12} /> Opción
           </button>
         </div>
@@ -180,7 +210,8 @@ export default function QuizBuilder({ onSave }) {
         <button className="quiz-btn-secondary" type="button" onClick={addQuestion}>
           <Plus size={14} /> Agregar Pregunta
         </button>
-        <button className="quiz-btn-primary" type="button" onClick={handleSubmit} disabled={saving}>
+
+        <button className="quiz-btn-primary" type="button" onClick={handleSubmit} disabled={!canSubmit}>
           {saving ? 'Guardando...' : 'Guardar Evaluación'}
         </button>
       </div>

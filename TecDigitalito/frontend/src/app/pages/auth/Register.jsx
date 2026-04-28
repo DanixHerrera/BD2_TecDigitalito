@@ -182,7 +182,7 @@ export default function Register() {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label" htmlFor="password">
-                  Contrasena <span>*</span>
+                  Contraseña <span>*</span>
                 </label>
                 <div className="input-wrapper">
                   <input

@@ -8,6 +8,8 @@ export default function CourseCreate() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const today = new Date().toISOString().split('T')[0];
+
   const [formData, setFormData] = useState({
     courseCode: '',
     courseName: '',
@@ -17,6 +19,18 @@ export default function CourseCreate() {
     imageUrl: '',
   });
 
+  const requiredFieldsFilled =
+    formData.courseCode.trim() &&
+    formData.courseName.trim() &&
+    formData.description.trim() &&
+    formData.startDate;
+
+  const datesAreValid =
+    formData.startDate >= today &&
+    (!formData.endDate || formData.endDate >= formData.startDate);
+
+  const canSubmit = requiredFieldsFilled && datesAreValid && !loading;
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -24,6 +38,12 @@ export default function CourseCreate() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (!canSubmit) {
+      setError('Verifica que todos los campos requeridos estén completos y que las fechas sean válidas.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -67,6 +87,7 @@ export default function CourseCreate() {
                 required
               />
             </div>
+
             <div className="form-group">
               <label className="form-label">Nombre del Curso *</label>
               <input
@@ -97,11 +118,27 @@ export default function CourseCreate() {
           <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
             <div className="form-group">
               <label className="form-label">Fecha de Inicio *</label>
-              <input type="date" name="startDate" className="form-input" value={formData.startDate} onChange={handleChange} required />
+              <input
+                type="date"
+                name="startDate"
+                className="form-input"
+                value={formData.startDate}
+                onChange={handleChange}
+                min={today}
+                required
+              />
             </div>
+
             <div className="form-group">
               <label className="form-label">Fecha de Fin</label>
-              <input type="date" name="endDate" className="form-input" value={formData.endDate} onChange={handleChange} />
+              <input
+                type="date"
+                name="endDate"
+                className="form-input"
+                value={formData.endDate}
+                onChange={handleChange}
+                min={formData.startDate || today}
+              />
             </div>
           </div>
 
@@ -121,7 +158,8 @@ export default function CourseCreate() {
             <button type="button" onClick={() => navigate('/courses')} className="btn btn-outline">
               Cancelar
             </button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
+
+            <button type="submit" className="btn btn-primary" disabled={!canSubmit}>
               {loading ? 'Creando...' : 'Crear Curso'}
             </button>
           </div>

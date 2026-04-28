@@ -2,6 +2,7 @@ import { RouterProvider } from 'react-router'
 import { Toaster } from './components/ui/sonner'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { router } from './routes'
+import FriendCourses from './pages/social/FriendCourses';
 
 export default function App() {
   return (
