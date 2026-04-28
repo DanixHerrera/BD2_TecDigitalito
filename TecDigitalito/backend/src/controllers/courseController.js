@@ -115,13 +115,11 @@ const syncContentTree = async (req, res) => {
       return res.error('No tienes permiso para modificar este curso', 403);
     }
 
-    // Eliminate all existing sections and section contents for this course
     const sections = await Section.find({ courseId });
     const sectionIds = sections.map((s) => s._id);
     await SectionContent.deleteMany({ sectionId: { $in: sectionIds } });
     await Section.deleteMany({ courseId });
 
-    // Helper function to recursively save the tree
     let orderCounter = 0;
     const saveNode = async (node, parentSectionId = null) => {
       const section = await Section.create({
@@ -142,20 +140,20 @@ const syncContentTree = async (req, res) => {
         let blockOrder = 0;
         for (const block of node.blocks) {
           let backendType = block.type;
-          if (backendType === 'file') backendType = 'document'; // Map frontend 'file' to backend 'document'
-          
+          if (backendType === 'file') backendType = 'document';
+
           let value = '';
           let title = '';
 
           if (block.type === 'text') {
-            value = block.content || ' '; // require value
+            value = block.content || ' ';
           } else if (block.type === 'file' || block.type === 'image') {
             value = block.url || '#';
             title = block.name || '';
           }
 
           if (!['text', 'video', 'image', 'document'].includes(backendType)) {
-            backendType = 'text'; // Fallback
+            backendType = 'text';
           }
 
           await SectionContent.create({
@@ -356,6 +354,98 @@ const getStudentsByCourse = async (req, res) => {
   return res.success({ students });
 };
 
+const cloneCourse = async (req, res) => {
+  const { id } = req.params;
+  const { courseCode } = req.body;
+
+  const original = await Course.findById(id);
+  if (!original) return res.errorNotFound('Curso no encontrado');
+
+  if (original.teacherId.toString() !== req.user.userId) {
+    return res.error('No tenes permiso para clonar este curso', 403);
+  }
+
+  const normalizedCode = courseCode?.trim();
+  if (!normalizedCode) return res.error('Se requiere un codigo de curso para el clon');
+  const exists = await Course.findOne({ courseCode: normalizedCode });
+  if (exists) return res.error('Ya existe un curso con ese codigo', 409);
+
+  const cloned = await Course.create({
+    courseCode: normalizedCode,
+    courseName: original.courseName + ' (Clon)',
+    description: original.description,
+    startDate: original.startDate,
+    endDate: original.endDate,
+    imageUrl: original.imageUrl,
+    teacherId: req.user.userId,
+    published: false,
+    enrolledStudents: [],
+  });
+
+  const sections = await Section.find({ courseId: original._id });
+  const sectionIdMap = {};
+
+  for (const sec of sections.filter(s => s.parentSectionId === null)) {
+    const newSec = await Section.create({
+      courseId: cloned._id,
+      parentSectionId: null,
+      title: sec.title,
+      description: sec.description,
+      order: sec.order,
+    });
+    sectionIdMap[sec._id.toString()] = newSec._id;
+  }
+
+  for (const sec of sections.filter(s => s.parentSectionId !== null)) {
+    const newParentId = sectionIdMap[sec.parentSectionId.toString()];
+    const newSec = await Section.create({
+      courseId: cloned._id,
+      parentSectionId: newParentId || null,
+      title: sec.title,
+      description: sec.description,
+      order: sec.order,
+    });
+    sectionIdMap[sec._id.toString()] = newSec._id;
+  }
+
+  const sectionIds = sections.map(s => s._id);
+  const contents = await SectionContent.find({ sectionId: { $in: sectionIds } });
+
+  for (const content of contents) {
+    const newSectionId = sectionIdMap[content.sectionId.toString()];
+    if (!newSectionId) continue;
+    await SectionContent.create({
+      sectionId: newSectionId,
+      type: content.type,
+      title: content.title,
+      value: content.value,
+      order: content.order,
+    });
+  }
+
+  const session = driver.session();
+  try {
+    await session.run(
+      `
+      MERGE (u:User {id: $userId})
+      MERGE (c:Course {id: $courseId})
+      SET c.courseCode = $courseCode, c.courseName = $courseName
+      MERGE (u)-[:TEACHES]->(c)
+      `,
+      {
+        userId: req.user.userId,
+        courseId: cloned._id.toString(),
+        courseCode: cloned.courseCode,
+        courseName: cloned.courseName,
+      }
+    );
+  } finally {
+    await session.close();
+  }
+
+  return res.success({ course: cloned }, 'Curso clonado correctamente', 201);
+};
+
 module.exports = {
   createCourse,
   getMyCreatedCourses,
@@ -367,4 +457,5 @@ module.exports = {
   getStudentsByCourse,
   getCourseContentTree,
   syncContentTree,
+  cloneCourse,
 };

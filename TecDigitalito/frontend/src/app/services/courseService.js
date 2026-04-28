@@ -69,4 +69,11 @@ export const courseService = {
     }));
     return await res.json();
   },
+  cloneCourse: async (courseId, courseCode) => {
+    const res = await fetch(`/api/courses/${courseId}/clone`, fetchOpts({
+      method: 'POST',
+      body: JSON.stringify({ courseCode }),
+    }));
+    return await res.json();
+  },
 };

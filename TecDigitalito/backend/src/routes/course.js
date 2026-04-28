@@ -11,6 +11,7 @@ const {
   getStudentsByCourse,
   getCourseContentTree,
   syncContentTree,
+  cloneCourse,
 } = require('../controllers/courseController');
 
 const router = express.Router();
@@ -24,6 +25,7 @@ router.put('/:id/content-tree', authMiddleware, syncContentTree);
 
 router.post('/', authMiddleware, createCourse);
 router.post('/:id/enroll', authMiddleware, enrollInCourse);
+router.post('/:id/clone', authMiddleware, cloneCourse);
 
 router.patch('/:id', authMiddleware, updateCourse);
 router.patch('/:id/publish', authMiddleware, publishCourse);

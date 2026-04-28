@@ -75,6 +75,33 @@ export default function CourseCard({ course, role, onAction, onPublishSuccess })
             Publicar Curso
           </button>
         )}
+
+        {role === 'Docente' && (
+          <button
+            className="btn btn-outline"
+            style={{
+              marginTop: '0.5rem',
+              width: '100%',
+              borderColor: '#6366f1',
+              color: '#6366f1',
+            }}
+            onClick={async (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              const newCode = prompt('Ingresa el codigo para el curso clonado (ej: IC-2025-CLON):');
+              if (!newCode) return;
+              const result = await courseService.cloneCourse(normalizedCourse.course_id, newCode.trim());
+              if (result.ok) {
+                alert('¡Curso clonado con exito!');
+                onPublishSuccess?.();
+              } else {
+                alert(result.message || 'Error al clonar');
+              }
+            }}
+          >
+            Clonar Curso
+          </button>
+        )}
       </div>
     </div>
   );
