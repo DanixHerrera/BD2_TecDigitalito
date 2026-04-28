@@ -43,9 +43,9 @@ export default function BlockEditor({ blocks = [], isEditable, onBlocksChange })
           case 'text':
             return <TextBlock key={key} block={block} isEditable={isEditable} onUpdate={(b) => handleUpdate(i, b)} />;
           case 'file':
-            return <FileBlock key={key} block={block} isEditable={isEditable} />;
+            return <FileBlock key={key} block={block} isEditable={isEditable} onUpdate={(b) => handleUpdate(i, b)} />;
           case 'image':
-            return <MediaBlock key={key} block={block} />;
+            return <MediaBlock key={key} block={block} isEditable={isEditable} onUpdate={(b) => handleUpdate(i, b)} />;
           default:
             return null;
         }

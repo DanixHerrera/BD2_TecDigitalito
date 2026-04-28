@@ -28,6 +28,45 @@ export default function Course() {
   const [evaluations, setEvaluations] = useState([]);
   const [myResults, setMyResults] = useState([]);
   const [submittingEvaluationId, setSubmittingEvaluationId] = useState(null);
+  // identifica el bloque de contenido que se trajo del backend
+  const toUiBlock = (content, index) => {
+    const id = content?._id ? `blk-${content._id}` : `blk-${index}`;
+    const title = content?.title || '';
+    const value = content?.value || '';
+    const safeUrl = value === '#' ? '' : value;
+
+    switch (content?.type) {
+      case 'text':
+        return { id, type: 'text', content: value };
+      case 'image':
+        return { id, type: 'image', name: title || 'Imagen', url: safeUrl, caption: '' };
+      case 'document':
+        return { id, type: 'file', name: title || 'Documento', size: '', url: safeUrl };
+      case 'video':
+        return { id, type: 'file', name: title || 'Video', size: '', url: safeUrl };
+      default:
+        return null;
+    }
+  };
+  // Se revisa el arbol de contenido para identificar el bloque es 
+  const toUiContentTree = (nodes, depth = 0) => {
+    if (!Array.isArray(nodes)) return [];
+
+    return nodes
+      .filter(Boolean)
+      .map((node, i) => {
+        const isLeaf = depth === 2;
+        const blocks = isLeaf ? (node.contents || []).map(toUiBlock).filter(Boolean) : [];
+
+        return {
+          id: node._id || `node-${depth}-${i}`,
+          title: node.title || '',
+          type: depth === 0 ? 'section' : depth === 1 ? 'topic' : 'subtopic',
+          blocks,
+          children: toUiContentTree(node.children || [], depth + 1),
+        };
+      });
+  };
 
   const normalizeCourse = (rawCourse, sections = []) => {
     const courseName = rawCourse?.courseName || rawCourse?.name || '';
@@ -44,12 +83,13 @@ export default function Course() {
       endDate: rawCourse?.endDate ?? null,
       name: courseName,
       code: courseCode,
-      contentTree: sections,
+      contentTree: toUiContentTree(sections),
     };
   };
 
   const permissions = course?.permissions || {};
   const isTeacher = Boolean(permissions.isTeacher);
+  const canManageContent = Boolean(permissions.canManageContent);
 
   useEffect(() => {
     const load = async () => {
@@ -141,7 +181,7 @@ export default function Course() {
           return;
         }
 
-        const params = new URLSearchParams({ 
+        const params = new URLSearchParams({
           contactUserId: userId,
           contactName: course.professor.name
         });
@@ -201,18 +241,18 @@ export default function Course() {
 
       <div className="course-tab-content">
         {activeTab === 'info' && (
-          <GeneralInfo 
-            course={course} 
-            isStudent={!isTeacher} 
-            onContactProfessor={handleContactProfessor} 
+          <GeneralInfo
+            course={course}
+            isStudent={!isTeacher}
+            onContactProfessor={handleContactProfessor}
             onSave={handleSaveCourse}
           />
         )}
 
         {activeTab === 'content' && (
-          <ContentArea 
-            contentTree={course.contentTree} 
-            isEditable={Boolean(permissions.canManageContent)} 
+          <ContentArea
+            contentTree={course.contentTree}
+            isEditable={canManageContent}
             onSaveContent={handleSaveContent}
           />
         )}
