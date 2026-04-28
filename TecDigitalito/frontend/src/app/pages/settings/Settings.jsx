@@ -101,47 +101,62 @@ function ChangePassword() {
   };
 
   return (
-    <div className="settings-card">
-      <div className="settings-card-header">
-        <div className="settings-icon-box">
-          <ShieldCheck size={24} />
-        </div>
-        <div>
-          <h2>Cambiar contraseña</h2>
-          <p>Actualiza tu contraseña para mantener tu cuenta segura.</p>
-        </div>
+    <div className="card" style={{ padding: '2rem' }}>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem', color: 'var(--foreground)' }}>Cambiar contraseña</h2>
+        <p style={{ margin: 0, color: 'var(--muted-foreground)' }}>Actualiza tu contraseña para mantener tu cuenta segura.</p>
       </div>
 
-      <form className="settings-form" onSubmit={handleSubmit}>
-        <div className="settings-form-group">
-          <label>Contraseña actual</label>
-          <input
-            type="password"
-            name="currentPassword"
-            value={form.currentPassword}
-            onChange={handleChange}
-            placeholder="Ingresa tu contraseña actual"
-          />
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label className="form-label">Contraseña actual</label>
+          <div className="input-wrapper">
+            <input
+              type="password"
+              className="form-input"
+              name="currentPassword"
+              value={form.currentPassword}
+              onChange={handleChange}
+              placeholder="Ingresa tu contraseña actual"
+            />
+          </div>
         </div>
 
-        <div className="settings-form-group">
-          <label>Nueva contraseña</label>
-          <input
-            type="password"
-            name="newPassword"
-            value={form.newPassword}
-            onChange={handleChange}
-            placeholder="Ingresa tu nueva contraseña"
-          />
-          <span className={passwordIsValid || !form.newPassword ? 'password-hint' : 'password-hint error'}>
-            {passwordError || 'Minimo 8 caracteres, una mayuscula, un numero y un especial.'}
-          </span>
+        <div className="form-group">
+          <label className="form-label">Nueva contraseña</label>
+          <div className="input-wrapper">
+            <input
+              type="password"
+              className={`form-input ${!passwordIsValid && form.newPassword ? 'error' : ''}`}
+              name="newPassword"
+              value={form.newPassword}
+              onChange={handleChange}
+              placeholder="Ingresa tu nueva contraseña"
+            />
+            {(!passwordIsValid && form.newPassword) && (
+              <p className="error-message">
+                {passwordError || 'Minimo 8 caracteres, una mayuscula, un numero y un especial.'}
+              </p>
+            )}
+          </div>
         </div>
 
-        {message && <div className={`settings-message ${messageType}`}>{message}</div>}
+        {message && (
+          <div style={{
+            padding: '1rem',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '1.5rem',
+            backgroundColor: messageType === 'error' ? '#fee2e2' : '#dcfce7',
+            color: messageType === 'error' ? '#991b1b' : '#166534',
+            fontWeight: 500,
+            fontSize: '0.9rem'
+          }}>
+            {message}
+          </div>
+        )}
 
-        <div className="settings-actions">
-          <button type="submit" className="settings-save-btn" disabled={!canSubmit}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+          <button type="submit" className="btn btn-primary" disabled={!canSubmit}>
             {loading ? 'Guardando...' : 'Actualizar contraseña'}
           </button>
         </div>
@@ -215,15 +230,10 @@ function SessionActivity() {
   };
 
   return (
-    <div className="settings-card activity-card">
-      <div className="settings-card-header">
-        <div className="settings-icon-box">
-          <Activity size={24} />
-        </div>
-        <div>
-          <h2>Actividad de sesión</h2>
-          <p>Consulta los últimos inicios y cierres de sesión registrados.</p>
-        </div>
+    <div className="card" style={{ padding: '2rem' }}>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem', color: 'var(--foreground)' }}>Actividad de sesión</h2>
+        <p style={{ margin: 0, color: 'var(--muted-foreground)' }}>Consulta los últimos inicios y cierres de sesión registrados.</p>
       </div>
 
       {loading && <div className="settings-empty">Cargando actividad...</div>}
