@@ -39,26 +39,9 @@ async function authMiddleware(req, res, next) {
       });
     }
 
-    const session = JSON.parse(sessionRaw);
-
-if (session.ip && session.userAgent) {
-  if (
-    session.ip !== req.ip ||
-    session.userAgent !== req.get('user-agent')
-  ) {
-    await redisClient.del(getSessionKey(decoded.userId, token));
-    res.clearCookie('session_token');
-
-    return res.status(401).json({
-      ok: false,
-      message: 'Sesión invalidada por actividad sospechosa',
-    });
-  }
-}
-
     req.user = decoded;
     next();
-  } catch (error) {
+  } catch {
     return res.status(401).json({
       ok: false,
       message: 'No autenticado',
